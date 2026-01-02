@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "52591950022",
+    "project_id": "meddeck-4cb95",
+    "storage_bucket": "meddeck-4cb95.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:52591950022:android:5ed32ca8f4056d5ba43fc7",
+        "android_client_info": {
+          "package_name": "com.example.meddeck"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPd1D_-yjo53Lx0wx4MtlJYjOVBbTxs-w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

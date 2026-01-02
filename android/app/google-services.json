@@ -12,7 +12,20 @@
           "package_name": "com.example.meddeck"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "52591950022-4ld5ivl80h9pa6rfb3ss3sfptf7m14as.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.meddeck",
+            "certificate_hash": "cb3db79684aaf9fcba9a454e52b5dd0bd02e79d0"
+          }
+        },
+        {
+          "client_id": "52591950022-ea8pvbdgm2atcpbd265ln0vtr0shjugn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAPd1D_-yjo53Lx0wx4MtlJYjOVBbTxs-w"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "52591950022-ea8pvbdgm2atcpbd265ln0vtr0shjugn.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "52591950022-rltk558jdoivk4af8nhogjocd1q148vq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.meddeck"
+              }
+            }
+          ]
         }
       }
     }

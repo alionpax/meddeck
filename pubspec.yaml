@@ -1,4 +1,4 @@
-name: meddeck
+﻿name: meddeck
 description: Clinical slide library app
 publish_to: 'none'
 
@@ -7,7 +7,8 @@ version: 0.1.0
 environment:
   sdk: '^3.10.0'
 
-dependencies:
+dependencies:
+  cloud_firestore: ^5.6.0
   flutter:
     sdk: flutter
 
@@ -29,3 +30,4 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+

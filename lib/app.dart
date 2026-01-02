@@ -2,14 +2,21 @@
 import 'package:go_router/go_router.dart';
 
 import 'core/theme.dart';
+
 import 'data/repo/mock_deck_repo.dart';
+import 'data/repo/firestore_deck_repo.dart';
+
 import 'features/auth/auth_gate.dart';
 import 'features/auth/signup_screen.dart';
+
 import 'features/deck/deck_detail_screen.dart';
 import 'features/viewer/slide_viewer_screen.dart';
+
 import 'features/offline/offline_screen.dart';
 import 'features/uploads/uploads_screen.dart';
 import 'features/settings/settings_screen.dart';
+
+import 'features/review/review_screen.dart';
 
 final _repo = MockDeckRepo();
 
@@ -23,6 +30,7 @@ class MedDeckApp extends StatelessWidget {
         ShellRoute(
           builder: (context, state, child) => _ScaffoldShell(child: child),
           routes: [
+            // Home: AuthGate (Login -> Library)
             GoRoute(
               path: '/',
               builder: (context, state) => AuthGate(repo: _repo),
@@ -39,15 +47,42 @@ class MedDeckApp extends StatelessWidget {
                   builder: (context, state) => SlideViewerScreen(
                     repo: _repo,
                     deckId: state.pathParameters['id']!,
-                    initialIndex: int.tryParse(state.uri.queryParameters['i'] ?? '0') ?? 0,
+                    initialIndex:
+                        int.tryParse(state.uri.queryParameters['i'] ?? '0') ?? 0,
                   ),
                 ),
               ],
             ),
-            GoRoute(path: '/signup', builder: (context, state) => const SignupScreen()),
-            GoRoute(path: '/offline', builder: (context, state) => OfflineScreen(repo: _repo)),
-            GoRoute(path: '/uploads', builder: (context, state) => const UploadsScreen()),
-            GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
+
+            // ✅✅✅ ADMIN REVIEW ROUTE (absolute path)
+            GoRoute(
+              path: '/review',
+              builder: (context, state) => ReviewScreen(
+                repo: FirestoreDeckRepo(),
+              ),
+            ),
+
+            // Auth
+            GoRoute(
+              path: '/signup',
+              builder: (context, state) => const SignupScreen(),
+            ),
+
+            // Tabs
+            GoRoute(
+              path: '/offline',
+              builder: (context, state) => OfflineScreen(repo: _repo),
+            ),
+            GoRoute(
+              path: '/uploads',
+              builder: (context, state) => const UploadsScreen(),
+            ),
+
+            // Settings
+            GoRoute(
+              path: '/settings',
+              builder: (context, state) => const SettingsScreen(),
+            ),
           ],
         ),
       ],
@@ -68,7 +103,7 @@ class _ScaffoldShell extends StatelessWidget {
   int _indexForLocation(String loc) {
     if (loc.startsWith('/offline')) return 2;
     if (loc.startsWith('/uploads')) return 3;
-    return 0;
+    return 0; // Library (and other routes)
   }
 
   @override
@@ -82,17 +117,37 @@ class _ScaffoldShell extends StatelessWidget {
         currentIndex: idx,
         onTap: (i) {
           switch (i) {
-            case 0: context.go('/'); break;
-            case 1: context.go('/'); break; // Search placeholder
-            case 2: context.go('/offline'); break;
-            case 3: context.go('/uploads'); break;
+            case 0:
+              context.go('/');
+              break;
+            case 1:
+              context.go('/'); // search placeholder
+              break;
+            case 2:
+              context.go('/offline');
+              break;
+            case 3:
+              context.go('/uploads');
+              break;
           }
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.grid_view_outlined), label: 'Library'),
-          BottomNavigationBarItem(icon: Icon(Icons.search_outlined), label: 'Search'),
-          BottomNavigationBarItem(icon: Icon(Icons.download_outlined), label: 'Offline'),
-          BottomNavigationBarItem(icon: Icon(Icons.upload_file_outlined), label: 'Uploads'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.grid_view_outlined),
+            label: 'Library',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search_outlined),
+            label: 'Search',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.download_outlined),
+            label: 'Offline',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.upload_file_outlined),
+            label: 'Uploads',
+          ),
         ],
       ),
     );

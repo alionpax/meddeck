@@ -1,5 +1,10 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
 
 class UploadsScreen extends StatefulWidget {
   const UploadsScreen({super.key});
@@ -9,108 +14,210 @@ class UploadsScreen extends StatefulWidget {
 }
 
 class _UploadsScreenState extends State<UploadsScreen> {
-  String? _pickedFileName;
+  final _titleCtrl = TextEditingController();
 
-  Future<void> _pickPptFile() async {
+  final List<String> _specialties = const [
+    'General',
+    'Cardiology',
+    'Neurology',
+    'Orthopedics',
+    'Radiology',
+    'Pediatrics',
+    'Surgery',
+    'Internal Medicine',
+    'Emergency Medicine',
+  ];
+
+  String _selectedSpecialty = 'General';
+
+  File? _pptFile;
+  String? _pptName;
+
+  bool _uploading = false;
+
+  // ---------- Pick PPT ----------
+  Future<void> _pickPpt() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['ppt', 'pptx'],
+    );
+
+    if (result == null || result.files.single.path == null) return;
+
+    setState(() {
+      _pptFile = File(result.files.single.path!);
+      _pptName = result.files.single.name;
+    });
+  }
+
+  // ---------- Upload ----------
+  Future<void> _uploadPpt() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || _pptFile == null) return;
+
+    final topic = _titleCtrl.text.trim();
+    if (topic.isEmpty) {
+      _toast('Please enter a topic');
+      return;
+    }
+
+    setState(() => _uploading = true);
+
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['ppt', 'pptx'],
-        withData: false,
-      );
+      final deckRef =
+          FirebaseFirestore.instance.collection('decks').doc();
 
-      if (result == null) {
-        // User cancelled
-        return;
-      }
-
-      setState(() {
-        _pickedFileName = result.files.single.name;
+      await deckRef.set({
+        'title': topic,
+        'specialty': _selectedSpecialty,
+        'ownerUid': user.uid,
+        'source': 'user',
+        'status': 'pending',
+        'pptUrl': '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Selected: ${result.files.single.name}'),
-        ),
+      final storageRef = FirebaseStorage.instance.ref(
+        'ppts/${deckRef.id}/$_pptName',
       );
+
+      await storageRef.putFile(_pptFile!);
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      await deckRef.update({
+        'pptUrl': downloadUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      _toast('Upload submitted for review');
+
+      setState(() {
+        _pptFile = null;
+        _pptName = null;
+        _titleCtrl.clear();
+        _selectedSpecialty = 'General';
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ File picker error: $e'),
-        ),
-      );
+      _toast('Upload failed');
+      debugPrint(e.toString());
+    } finally {
+      setState(() => _uploading = false);
     }
   }
 
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.blueGrey.shade900,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text(
-          'UPLOAD PPT',
-          style: TextStyle(
-            color: Colors.cyanAccent,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('Submit PowerPoint File for Review'),
       ),
-      body: Center(
-        child: Container(
-          width: double.infinity,
-          margin: const EdgeInsets.all(24),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.blueGrey.shade800,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.cyanAccent,
-              width: 3,
-            ),
-          ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                Icons.upload_file,
-                size: 96,
-                color: Colors.cyanAccent,
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'SELECT A PPT FILE',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+              Text(
+                'PowerPoint details',
+                style: theme.textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
-              Text(
-                _pickedFileName ?? 'No file selected',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white70,
+
+              TextField(
+                controller: _titleCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Topic',
+                  border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
+
+              DropdownButtonFormField<String>(
+                value: _selectedSpecialty,
+                items: _specialties
+                    .map(
+                      (s) => DropdownMenuItem(
+                        value: s,
+                        child: Text(s),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() => _selectedSpecialty = v);
+                  }
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Specialty',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+
+              const SizedBox(height: 28),
+              Text(
+                'Presentation file',
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+
+              OutlinedButton.icon(
+                icon: const Icon(Icons.attach_file),
+                label: const Text('Select PPT / PPTX file'),
+                onPressed: _pickPpt,
+              ),
+
+              if (_pptName != null) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.description_outlined, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _pptName!,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+
+              const Spacer(),
+
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: 48,
                 child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.cyanAccent,
-                    foregroundColor: Colors.black,
-                    textStyle: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  icon: const Icon(Icons.cloud_upload),
+                  label: Text(
+                    _uploading
+                        ? 'Uploading…'
+                        : 'Submit for review',
                   ),
-                  icon: const Icon(Icons.folder_open),
-                  label: const Text('BROWSE FILES'),
-                  onPressed: _pickPptFile,
+                  onPressed:
+                      (_pptFile == null || _uploading)
+                          ? null
+                          : _uploadPpt,
                 ),
+              ),
+
+              const SizedBox(height: 8),
+              Text(
+                'All uploads are reviewed before becoming publicly visible.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: Colors.grey),
               ),
             ],
           ),

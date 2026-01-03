@@ -1,1 +1,43 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"meddeck-4cb95","appId":"1:52591950022:android:5ed32ca8f4056d5ba43fc7","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"meddeck-4cb95","configurations":{"android":"1:52591950022:android:5ed32ca8f4056d5ba43fc7","ios":"1:52591950022:ios:a9fb3fd3354244f8a43fc7","macos":"1:52591950022:ios:a9fb3fd3354244f8a43fc7","web":"1:52591950022:web:97626a81b391bd86a43fc7","windows":"1:52591950022:web:7487deb30e160984a43fc7"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "meddeck-4cb95",
+          "appId": "1:52591950022:android:5ed32ca8f4056d5ba43fc7",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "meddeck-4cb95",
+          "configurations": {
+            "android": "1:52591950022:android:5ed32ca8f4056d5ba43fc7",
+            "ios": "1:52591950022:ios:a9fb3fd3354244f8a43fc7",
+            "macos": "1:52591950022:ios:a9fb3fd3354244f8a43fc7",
+            "web": "1:52591950022:web:97626a81b391bd86a43fc7",
+            "windows": "1:52591950022:web:7487deb30e160984a43fc7"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ]
+}

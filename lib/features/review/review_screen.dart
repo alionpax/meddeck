@@ -1,28 +1,50 @@
 ﻿import 'package:flutter/material.dart';
+
 import '../../data/repo/firestore_deck_repo.dart';
+import 'slide_upload_screen.dart';
 
 class ReviewScreen extends StatefulWidget {
   final FirestoreDeckRepo repo;
-  const ReviewScreen({super.key, required this.repo});
+
+  const ReviewScreen({
+    super.key,
+    required this.repo,
+  });
 
   @override
   State<ReviewScreen> createState() => _ReviewScreenState();
 }
 
 class _ReviewScreenState extends State<ReviewScreen> {
-  Future<void> _refresh() async => setState(() {});
+  Future<void> _refresh() async {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Review')),
+      appBar: AppBar(
+        title: const Text('Review submissions'),
+      ),
       body: FutureBuilder(
         future: widget.repo.listPendingDecks(),
         builder: (context, snap) {
-          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-          final decks = snap.data!;
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snap.hasError) {
+            return Center(
+              child: Text('Error: ${snap.error}'),
+            );
+          }
+
+          final decks = snap.data ?? [];
+
           if (decks.isEmpty) {
-            return const Center(child: Text('No pending decks.'));
+            return const Center(
+              child: Text('No pending submissions'),
+            );
           }
 
           return RefreshIndicator(
@@ -30,42 +52,92 @@ class _ReviewScreenState extends State<ReviewScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.all(12),
               itemCount: decks.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, i) {
                 final d = decks[i];
+
                 return Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Theme.of(context).dividerColor),
+                    border: Border.all(
+                      color: Theme.of(context).dividerColor,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(d.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      // ---------- Title ----------
+                      Text(
+                        d.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+
                       const SizedBox(height: 4),
-                      Text(d.specialty, style: Theme.of(context).textTheme.bodySmall),
-                      const SizedBox(height: 12),
+
+                      // ---------- Specialty ----------
                       Row(
                         children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () async {
-                                await widget.repo.setStatus(d.id, 'rejected');
-                                if (mounted) _refresh();
-                              },
-                              child: const Text('Reject'),
-                            ),
+                          const Icon(
+                            Icons.local_hospital_outlined,
+                            size: 16,
+                            color: Colors.grey,
                           ),
+                          const SizedBox(width: 6),
+                          Text(
+                            d.specialty,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ---------- Actions ----------
+                      Row(
+                        children: [
+                          IconButton(
+                            tooltip: 'Upload slide images',
+                            icon: const Icon(Icons.image_outlined),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => SlideUploadScreen(
+                                    deckId: d.id,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                          const Spacer(),
+
+                          OutlinedButton(
+                            onPressed: () async {
+                              await widget.repo.setStatus(
+                                d.id,
+                                'rejected',
+                              );
+                              if (mounted) _refresh();
+                            },
+                            child: const Text('Reject'),
+                          ),
+
                           const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: () async {
-                                await widget.repo.setStatus(d.id, 'approved');
-                                if (mounted) _refresh();
-                              },
-                              child: const Text('Approve'),
-                            ),
+
+                          FilledButton(
+                            onPressed: () async {
+                              await widget.repo.setStatus(
+                                d.id,
+                                'approved',
+                              );
+                              if (mounted) _refresh();
+                            },
+                            child: const Text('Approve'),
                           ),
                         ],
                       ),

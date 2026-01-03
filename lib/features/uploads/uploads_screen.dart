@@ -1,6 +1,5 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import '../../data/repo/firestore_deck_repo.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
 class UploadsScreen extends StatefulWidget {
   const UploadsScreen({super.key});
@@ -10,80 +9,112 @@ class UploadsScreen extends StatefulWidget {
 }
 
 class _UploadsScreenState extends State<UploadsScreen> {
-  final _repo = FirestoreDeckRepo();
-  final _title = TextEditingController();
-  final _specialty = TextEditingController(text: 'General');
-  bool _loading = false;
-  String? _msg;
+  String? _pickedFileName;
 
-  @override
-  void dispose() {
-    _title.dispose();
-    _specialty.dispose();
-    super.dispose();
+  Future<void> _pickPptFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['ppt', 'pptx'],
+        withData: false,
+      );
+
+      if (result == null) {
+        // User cancelled
+        return;
+      }
+
+      setState(() {
+        _pickedFileName = result.files.single.name;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Selected: ${result.files.single.name}'),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ File picker error: $e'),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Uploads')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text('Submit a deck for admin review', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _title,
-            decoration: const InputDecoration(
-              labelText: 'Title',
-              border: OutlineInputBorder(),
+      backgroundColor: Colors.blueGrey.shade900,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text(
+          'UPLOAD PPT',
+          style: TextStyle(
+            color: Colors.cyanAccent,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      body: Center(
+        child: Container(
+          width: double.infinity,
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.blueGrey.shade800,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.cyanAccent,
+              width: 3,
             ),
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _specialty,
-            decoration: const InputDecoration(
-              labelText: 'Specialty',
-              border: OutlineInputBorder(),
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.upload_file,
+                size: 96,
+                color: Colors.cyanAccent,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'SELECT A PPT FILE',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _pickedFileName ?? 'No file selected',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.cyanAccent,
+                    foregroundColor: Colors.black,
+                    textStyle: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('BROWSE FILES'),
+                  onPressed: _pickPptFile,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 48,
-            child: FilledButton(
-              onPressed: (user == null || _loading) ? null : () async {
-                setState(() { _loading = true; _msg = null; });
-                try {
-                  await _repo.createPendingDeck(
-                    title: _title.text,
-                    specialty: _specialty.text,
-                    ownerUid: user.uid,
-                  );
-                  _title.clear();
-                  setState(() { _msg = 'Submitted. Awaiting approval.'; });
-                } catch (e) {
-                  setState(() { _msg = 'Failed: $e'; });
-                } finally {
-                  if (mounted) setState(() { _loading = false; });
-                }
-              },
-              child: _loading
-                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Submit for review'),
-            ),
-          ),
-          if (_msg != null) ...[
-            const SizedBox(height: 12),
-            Text(_msg!),
-          ],
-          const SizedBox(height: 16),
-          Text(
-            'PPT upload pipeline comes next (storage + preview). For now, this submits metadata for workflow testing.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -23,7 +23,7 @@ app.post("/convert", async (req, res) => {
   }
 
   try {
-    // Clean and prepare working directories
+    // Reset working directory
     fs.rmSync(WORK_DIR, { recursive: true, force: true });
     fs.mkdirSync(path.join(WORK_DIR, OUTPUT_DIR), { recursive: true });
 
@@ -36,12 +36,13 @@ app.post("/convert", async (req, res) => {
       .file(filePath)
       .download({ destination: inputPath });
 
-    // Convert ALL slides using LibreOffice Impress PNG export
+    // FORCE LibreOffice to treat input as Impress (presentation)
     await new Promise((resolve, reject) => {
       execFile(
         "libreoffice",
         [
           "--headless",
+          "--infilter=impress8",
           "--convert-to",
           "png:impress_png_Export",
           "--outdir",
@@ -55,11 +56,15 @@ app.post("/convert", async (req, res) => {
       );
     });
 
-    // Read and upload generated slides
+    // Collect generated PNG slides
     const files = fs
       .readdirSync(outputPath)
       .filter((f) => f.endsWith(".png"))
       .sort();
+
+    if (files.length === 0) {
+      throw new Error("LibreOffice produced no PNG files");
+    }
 
     const uploadedSlides = [];
 

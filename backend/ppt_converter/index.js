@@ -10,7 +10,8 @@ app.use(express.json());
 const storage = new Storage();
 
 const WORK_DIR = "/tmp/work";
-const INPUT_FILE = "input.pptx";
+const INPUT_PPTX = "input.pptx";
+const OUTPUT_PDF = "slides.pdf";
 const OUTPUT_DIR = "out";
 
 app.post("/convert", async (req, res) => {
@@ -23,20 +24,23 @@ app.post("/convert", async (req, res) => {
   }
 
   try {
-    // Reset working directory
+    // Reset work dir
     fs.rmSync(WORK_DIR, { recursive: true, force: true });
-    fs.mkdirSync(path.join(WORK_DIR, OUTPUT_DIR), { recursive: true });
+    fs.mkdirSync(WORK_DIR, { recursive: true });
 
-    const inputPath = path.join(WORK_DIR, INPUT_FILE);
+    const pptxPath = path.join(WORK_DIR, INPUT_PPTX);
+    const pdfPath = path.join(WORK_DIR, OUTPUT_PDF);
     const outputPath = path.join(WORK_DIR, OUTPUT_DIR);
 
-    // Download PPTX from Firebase Storage
+    fs.mkdirSync(outputPath, { recursive: true });
+
+    // 1️⃣ Download PPTX
     await storage
       .bucket(bucket)
       .file(filePath)
-      .download({ destination: inputPath });
+      .download({ destination: pptxPath });
 
-    // FORCE LibreOffice to treat input as Impress (presentation)
+    // 2️⃣ PPTX → PDF (Impress)
     await new Promise((resolve, reject) => {
       execFile(
         "libreoffice",
@@ -44,28 +48,46 @@ app.post("/convert", async (req, res) => {
           "--headless",
           "--infilter=impress8",
           "--convert-to",
-          "png:impress_png_Export",
+          "pdf:impress_pdf_Export",
           "--outdir",
-          outputPath,
-          inputPath
+          WORK_DIR,
+          pptxPath
         ],
-        (error) => {
-          if (error) reject(error);
-          else resolve();
-        }
+        (err) => (err ? reject(err) : resolve())
       );
     });
 
-    // Collect generated PNG slides
+    if (!fs.existsSync(pdfPath)) {
+      throw new Error("PDF export failed");
+    }
+
+    // 3️⃣ PDF → PNG (Draw)
+    await new Promise((resolve, reject) => {
+      execFile(
+        "libreoffice",
+        [
+          "--headless",
+          "--convert-to",
+          "png",
+          "--outdir",
+          outputPath,
+          pdfPath
+        ],
+        (err) => (err ? reject(err) : resolve())
+      );
+    });
+
+    // 4️⃣ Collect PNGs
     const files = fs
       .readdirSync(outputPath)
       .filter((f) => f.endsWith(".png"))
       .sort();
 
     if (files.length === 0) {
-      throw new Error("LibreOffice produced no PNG files");
+      throw new Error("PDF to PNG conversion produced no images");
     }
 
+    // 5️⃣ Upload slides
     const uploadedSlides = [];
 
     for (const file of files) {
@@ -99,5 +121,5 @@ app.post("/health", (_, res) => {
 });
 
 app.listen(process.env.PORT, () => {
-  console.log("MedDeck PPT converter running");
+  console.log("MedDeck PPT converter running (PDF pipeline)");
 });

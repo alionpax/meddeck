@@ -6,13 +6,20 @@ import os from "os";
 import path from "path";
 
 const app = express();
-app.use(express.json()); // ✅ IMPORTANT: must be express.json()
+app.use(express.json()); // ✅ MUST be express.json()
 
 const storage = new Storage();
 
-function runLibreOffice(args) {
+function runLibreOffice(args, timeoutMs = 240000) {
   return new Promise((resolve, reject) => {
-    execFile("libreoffice", args, (err) => (err ? reject(err) : resolve()));
+    execFile("libreoffice", args, { timeout: timeoutMs }, (err, stdout, stderr) => {
+      if (err) {
+        err.stdout = stdout;
+        err.stderr = stderr;
+        return reject(err);
+      }
+      resolve({ stdout, stderr });
+    });
   });
 }
 
@@ -20,62 +27,111 @@ app.post("/convert", async (req, res) => {
   const { bucket, filePath } = req.body ?? {};
 
   if (!bucket || !filePath) {
-    return res.status(400).json({ error: "bucket_and_filePath_required" });
+    return res.status(400).json({
+      error: "bucket_and_filePath_required"
+    });
   }
 
-  // ✅ Unique work dir per request (prevents concurrency collisions)
+  // ✅ Unique work dir per request
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "meddeck-"));
   const pptxPath = path.join(workDir, "input.pptx");
   const pngOutDir = path.join(workDir, "out");
+  const loProfileDir = path.join(workDir, "lo-profile");
+
+  // LibreOffice wants a file:// URI for UserInstallation
+  const loProfileUri = `file://${loProfileDir.replace(/\\/g, "/")}`;
 
   try {
     fs.mkdirSync(pngOutDir, { recursive: true });
+    fs.mkdirSync(loProfileDir, { recursive: true });
 
-    // 1) Download PPTX
+    // 1) Download PPTX from Storage
     await storage.bucket(bucket).file(filePath).download({ destination: pptxPath });
 
-    // 2) PPTX → PDF (don’t assume PDF filename)
-    await runLibreOffice([
-      "--headless",
-      "--nologo",
-      "--nolockcheck",
-      "--infilter=impress8",
-      "--convert-to",
-      "pdf:impress_pdf_Export",
-      "--outdir",
-      workDir,
-      pptxPath
-    ]);
-
-    const pdfFiles = fs.readdirSync(workDir).filter((f) => f.toLowerCase().endsWith(".pdf"));
-    if (pdfFiles.length === 0) {
-      throw new Error("LibreOffice did not generate a PDF");
+    // 2) PPTX → PDF (don’t assume output name)
+    try {
+      await runLibreOffice([
+        "--headless",
+        "--nologo",
+        "--nolockcheck",
+        `-env:UserInstallation=${loProfileUri}`,
+        "--convert-to",
+        "pdf",
+        "--outdir",
+        workDir,
+        pptxPath
+      ]);
+    } catch (e) {
+      const files = safeListDir(workDir);
+      return res.status(500).json({
+        error: "conversion_failed",
+        message: "LibreOffice PPTX→PDF step failed",
+        details: {
+          workDirFiles: files,
+          stdout: e.stdout,
+          stderr: e.stderr
+        }
+      });
     }
+
+    const workFilesAfterPdf = safeListDir(workDir);
+    const pdfFiles = workFilesAfterPdf.filter((f) => f.toLowerCase().endsWith(".pdf"));
+
+    if (pdfFiles.length === 0) {
+      return res.status(500).json({
+        error: "conversion_failed",
+        message: "LibreOffice did not generate a PDF",
+        details: { workDirFiles: workFilesAfterPdf }
+      });
+    }
+
     const pdfPath = path.join(workDir, pdfFiles[0]);
 
-    // 3) PDF → PNG (one image per page/slide)
-    await runLibreOffice([
-      "--headless",
-      "--nologo",
-      "--nolockcheck",
-      "--convert-to",
-      "png",
-      "--outdir",
-      pngOutDir,
-      pdfPath
-    ]);
+    // 3) PDF → PNG
+    try {
+      await runLibreOffice([
+        "--headless",
+        "--nologo",
+        "--nolockcheck",
+        `-env:UserInstallation=${loProfileUri}`,
+        "--convert-to",
+        "png",
+        "--outdir",
+        pngOutDir,
+        pdfPath
+      ]);
+    } catch (e) {
+      const files = safeListDir(workDir);
+      const pngFiles = safeListDir(pngOutDir);
+      return res.status(500).json({
+        error: "conversion_failed",
+        message: "LibreOffice PDF→PNG step failed",
+        details: {
+          workDirFiles: files,
+          outDirFiles: pngFiles,
+          stdout: e.stdout,
+          stderr: e.stderr
+        }
+      });
+    }
 
     // 4) Collect PNGs
-    const pngFiles = fs
-      .readdirSync(pngOutDir)
+    const pngFiles = safeListDir(pngOutDir)
       .filter((f) => f.toLowerCase().endsWith(".png"))
       .sort();
 
     if (pngFiles.length === 0) {
-      throw new Error("PDF to PNG conversion produced no images");
+      return res.status(500).json({
+        error: "conversion_failed",
+        message: "PDF to PNG conversion produced no images",
+        details: {
+          workDirFiles: safeListDir(workDir),
+          outDirFiles: safeListDir(pngOutDir)
+        }
+      });
     }
 
-    // 5) Upload PNGs
+    // 5) Upload PNGs back to Storage
     const uploadedSlides = [];
     for (const file of pngFiles) {
       const localFile = path.join(pngOutDir, file);
@@ -114,3 +170,11 @@ const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`MedDeck PPT converter running on port ${PORT}`);
 });
+
+function safeListDir(dirPath) {
+  try {
+    return fs.readdirSync(dirPath);
+  } catch {
+    return [];
+  }
+}

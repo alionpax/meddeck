@@ -1,6 +1,6 @@
 import express from "express";
 import { Storage } from "@google-cloud/storage";
-import { execFile } from "child_process";
+import { execFile, execFileSync } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -32,17 +32,27 @@ function runCmd(bin, args, timeoutMs = 300000) {
 }
 
 function parsePdfPages(pdfInfoStdout) {
-  // pdfinfo output includes: "Pages:          4"
   const m = pdfInfoStdout.match(/Pages:\s+(\d+)/);
   return m ? Number(m[1]) : null;
 }
 
 function numericPageSort(a, b) {
-  // slide-1.png, slide-2.png, ...
   const na = Number((a.match(/-(\d+)\.png$/i) || [])[1] ?? 0);
   const nb = Number((b.match(/-(\d+)\.png$/i) || [])[1] ?? 0);
   return na - nb;
 }
+
+app.get("/health", (_, res) => res.json({ status: "ok" }));
+
+// Verifies poppler (pdftoppm) exists in the container
+app.get("/healthz", (_, res) => {
+  try {
+    execFileSync("pdftoppm", ["-h"], { stdio: "ignore" });
+    res.json({ status: "ok", pdftoppm: "present" });
+  } catch {
+    res.status(500).json({ status: "bad", pdftoppm: "missing" });
+  }
+});
 
 app.post("/convert", async (req, res) => {
   const { bucket, filePath } = req.body ?? {};
@@ -63,7 +73,7 @@ app.post("/convert", async (req, res) => {
     // 1) Download PPTX
     await storage.bucket(bucket).file(filePath).download({ destination: pptxPath });
 
-    // 2) PPTX -> PDF (LibreOffice)
+    // 2) PPTX → PDF (LibreOffice)
     await runCmd("libreoffice", [
       "--headless",
       "--nologo",
@@ -76,41 +86,33 @@ app.post("/convert", async (req, res) => {
       pptxPath
     ]);
 
-    // Find generated PDF (don’t assume name)
-    const workFiles = safeListDir(workDir);
-    const pdfFiles = workFiles.filter((f) => f.toLowerCase().endsWith(".pdf"));
+    const workFilesAfterPdf = safeListDir(workDir);
+    const pdfFiles = workFilesAfterPdf.filter((f) => f.toLowerCase().endsWith(".pdf"));
     if (pdfFiles.length === 0) {
       return res.status(500).json({
         error: "conversion_failed",
         message: "LibreOffice did not generate a PDF",
-        details: { workDirFiles: workFiles }
+        details: { workDirFiles: workFilesAfterPdf }
       });
     }
 
-    // Choose most recently modified PDF (handles weird naming)
+    // Pick most recently modified PDF in case LO generates odd names
     const pdfPath = pdfFiles
       .map((name) => ({ name, full: path.join(workDir, name) }))
       .sort((a, b) => fs.statSync(b.full).mtimeMs - fs.statSync(a.full).mtimeMs)[0].full;
 
-    // 2.5) Inspect PDF page count (Poppler)
+    // 2.5) Determine page count (optional)
     let pdfPages = null;
     try {
       const info = await runCmd("pdfinfo", [pdfPath], 60000);
       pdfPages = parsePdfPages(info.stdout);
     } catch {
-      // Not fatal; conversion can proceed
+      // Not fatal
     }
 
-    // 3) PDF -> PNG pages (Poppler pdftoppm) ✅ reliable multi-page output
-    // Output files: slide-1.png, slide-2.png, ...
+    // 3) PDF → PNG (Poppler pdftoppm) => slide-1.png, slide-2.png, ...
     const prefix = path.join(pngOutDir, "slide");
-    await runCmd("pdftoppm", [
-      "-png",
-      "-r",
-      "150",
-      pdfPath,
-      prefix
-    ]);
+    await runCmd("pdftoppm", ["-png", "-r", "150", pdfPath, prefix], 300000);
 
     const pngFiles = safeListDir(pngOutDir)
       .filter((f) => /^slide-\d+\.png$/i.test(f))
@@ -120,16 +122,18 @@ app.post("/convert", async (req, res) => {
       return res.status(500).json({
         error: "conversion_failed",
         message: "pdftoppm produced no PNG files",
-        details: { workDirFiles: safeListDir(workDir), outDirFiles: safeListDir(pngOutDir) }
+        details: {
+          workDirFiles: safeListDir(workDir),
+          outDirFiles: safeListDir(pngOutDir),
+          pdfPages
+        }
       });
     }
 
-    // 4) Upload slides with nice ordered names (slide_001.png ...)
+    // 4) Upload slides with stable names slide_001.png ...
     const uploadedSlides = [];
     for (let i = 0; i < pngFiles.length; i++) {
-      const file = pngFiles[i];
-      const localFile = path.join(pngOutDir, file);
-
+      const localFile = path.join(pngOutDir, pngFiles[i]);
       const pageNum = String(i + 1).padStart(3, "0");
       const destName = `slide_${pageNum}.png`;
       const destination = `${filePath}/slides/${destName}`;
@@ -154,8 +158,10 @@ app.post("/convert", async (req, res) => {
       error: "conversion_failed",
       message: err?.message ?? String(err),
       details: {
-        stdout: err?.stdout,
-        stderr: err?.stderr
+        stdout: err?.stdout ?? "",
+        stderr: err?.stderr ?? "",
+        workDirFiles: safeListDir(workDir),
+        outDirFiles: safeListDir(pngOutDir)
       }
     });
   } finally {
@@ -164,8 +170,6 @@ app.post("/convert", async (req, res) => {
     } catch {}
   }
 });
-
-app.post("/health", (_, res) => res.json({ status: "ok" }));
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {

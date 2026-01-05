@@ -18,12 +18,12 @@ app.post("/convert", async (req, res) => {
 
   if (!bucket || !filePath) {
     return res.status(400).json({
-      error: "bucket and filePath are required"
+      error: "bucket_and_filePath_required"
     });
   }
 
   try {
-    // Prepare directories
+    // Clean and prepare working directories
     fs.rmSync(WORK_DIR, { recursive: true, force: true });
     fs.mkdirSync(path.join(WORK_DIR, OUTPUT_DIR), { recursive: true });
 
@@ -36,14 +36,14 @@ app.post("/convert", async (req, res) => {
       .file(filePath)
       .download({ destination: inputPath });
 
-    // Convert using LibreOffice
+    // Convert ALL slides using LibreOffice Impress PNG export
     await new Promise((resolve, reject) => {
       execFile(
         "libreoffice",
         [
           "--headless",
           "--convert-to",
-          "png",
+          "png:impress_png_Export",
           "--outdir",
           outputPath,
           inputPath
@@ -55,8 +55,12 @@ app.post("/convert", async (req, res) => {
       );
     });
 
-    // Upload generated slides
-    const files = fs.readdirSync(outputPath).sort();
+    // Read and upload generated slides
+    const files = fs
+      .readdirSync(outputPath)
+      .filter((f) => f.endsWith(".png"))
+      .sort();
+
     const uploadedSlides = [];
 
     for (const file of files) {

@@ -6,9 +6,17 @@ import os from "os";
 import path from "path";
 
 const app = express();
-app.use(express.json()); // ✅ MUST be express.json()
+app.use(express.json()); // ✅ must be express.json()
 
 const storage = new Storage();
+
+function safeListDir(dirPath) {
+  try {
+    return fs.readdirSync(dirPath);
+  } catch {
+    return [];
+  }
+}
 
 function runLibreOffice(args, timeoutMs = 240000) {
   return new Promise((resolve, reject) => {
@@ -27,9 +35,7 @@ app.post("/convert", async (req, res) => {
   const { bucket, filePath } = req.body ?? {};
 
   if (!bucket || !filePath) {
-    return res.status(400).json({
-      error: "bucket_and_filePath_required"
-    });
+    return res.status(400).json({ error: "bucket_and_filePath_required" });
   }
 
   // ✅ Unique work dir per request
@@ -38,17 +44,17 @@ app.post("/convert", async (req, res) => {
   const pngOutDir = path.join(workDir, "out");
   const loProfileDir = path.join(workDir, "lo-profile");
 
-  // LibreOffice wants a file:// URI for UserInstallation
+  // LibreOffice needs a file:// URI for UserInstallation
   const loProfileUri = `file://${loProfileDir.replace(/\\/g, "/")}`;
 
   try {
     fs.mkdirSync(pngOutDir, { recursive: true });
     fs.mkdirSync(loProfileDir, { recursive: true });
 
-    // 1) Download PPTX from Storage
+    // 1) Download PPTX
     await storage.bucket(bucket).file(filePath).download({ destination: pptxPath });
 
-    // 2) PPTX → PDF (don’t assume output name)
+    // 2) PPTX → PDF (force Impress PDF export)
     try {
       await runLibreOffice([
         "--headless",
@@ -56,24 +62,24 @@ app.post("/convert", async (req, res) => {
         "--nolockcheck",
         `-env:UserInstallation=${loProfileUri}`,
         "--convert-to",
-        "pdf",
+        "pdf:impress_pdf_Export",
         "--outdir",
         workDir,
         pptxPath
       ]);
     } catch (e) {
-      const files = safeListDir(workDir);
       return res.status(500).json({
         error: "conversion_failed",
         message: "LibreOffice PPTX→PDF step failed",
         details: {
-          workDirFiles: files,
+          workDirFiles: safeListDir(workDir),
           stdout: e.stdout,
           stderr: e.stderr
         }
       });
     }
 
+    // Find generated PDF (do not assume name)
     const workFilesAfterPdf = safeListDir(workDir);
     const pdfFiles = workFilesAfterPdf.filter((f) => f.toLowerCase().endsWith(".pdf"));
 
@@ -85,9 +91,12 @@ app.post("/convert", async (req, res) => {
       });
     }
 
-    const pdfPath = path.join(workDir, pdfFiles[0]);
+    // If multiple PDFs exist, pick the most recently modified one
+    const pdfPath = pdfFiles
+      .map((name) => ({ name, full: path.join(workDir, name) }))
+      .sort((a, b) => fs.statSync(b.full).mtimeMs - fs.statSync(a.full).mtimeMs)[0].full;
 
-    // 3) PDF → PNG
+    // 3) PDF → PNG (force Draw PNG export; should export all pages)
     try {
       await runLibreOffice([
         "--headless",
@@ -95,20 +104,18 @@ app.post("/convert", async (req, res) => {
         "--nolockcheck",
         `-env:UserInstallation=${loProfileUri}`,
         "--convert-to",
-        "png",
+        "png:draw_png_Export",
         "--outdir",
         pngOutDir,
         pdfPath
       ]);
     } catch (e) {
-      const files = safeListDir(workDir);
-      const pngFiles = safeListDir(pngOutDir);
       return res.status(500).json({
         error: "conversion_failed",
         message: "LibreOffice PDF→PNG step failed",
         details: {
-          workDirFiles: files,
-          outDirFiles: pngFiles,
+          workDirFiles: safeListDir(workDir),
+          outDirFiles: safeListDir(pngOutDir),
           stdout: e.stdout,
           stderr: e.stderr
         }
@@ -123,7 +130,7 @@ app.post("/convert", async (req, res) => {
     if (pngFiles.length === 0) {
       return res.status(500).json({
         error: "conversion_failed",
-        message: "PDF to PNG conversion produced no images",
+        message: "PDF→PNG conversion produced no images",
         details: {
           workDirFiles: safeListDir(workDir),
           outDirFiles: safeListDir(pngOutDir)
@@ -131,7 +138,7 @@ app.post("/convert", async (req, res) => {
       });
     }
 
-    // 5) Upload PNGs back to Storage
+    // 5) Upload PNGs
     const uploadedSlides = [];
     for (const file of pngFiles) {
       const localFile = path.join(pngOutDir, file);
@@ -170,11 +177,3 @@ const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`MedDeck PPT converter running on port ${PORT}`);
 });
-
-function safeListDir(dirPath) {
-  try {
-    return fs.readdirSync(dirPath);
-  } catch {
-    return [];
-  }
-}

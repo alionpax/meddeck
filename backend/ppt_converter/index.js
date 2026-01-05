@@ -44,13 +44,32 @@ function numericPageSort(a, b) {
 
 app.get("/health", (_, res) => res.json({ status: "ok" }));
 
-// Verifies poppler (pdftoppm) exists in the container
+// Quick check that pdftoppm exists in the running container
 app.get("/healthz", (_, res) => {
   try {
     execFileSync("pdftoppm", ["-h"], { stdio: "ignore" });
     res.json({ status: "ok", pdftoppm: "present" });
   } catch {
     res.status(500).json({ status: "bad", pdftoppm: "missing" });
+  }
+});
+
+// More detailed diagnostics (path + help header)
+app.get("/diag", async (_, res) => {
+  try {
+    const { stdout: whichOut } = await runCmd("sh", ["-lc", "command -v pdftoppm"], 10000);
+    const { stdout: helpOut } = await runCmd("sh", ["-lc", "pdftoppm -h | head -n 1"], 10000);
+    res.json({
+      status: "ok",
+      pdftoppmPath: whichOut.trim(),
+      pdftoppmHelp: helpOut.trim()
+    });
+  } catch (e) {
+    res.status(500).json({
+      status: "bad",
+      message: e?.message ?? String(e),
+      details: { stdout: e?.stdout ?? "", stderr: e?.stderr ?? "" }
+    });
   }
 });
 
@@ -96,21 +115,22 @@ app.post("/convert", async (req, res) => {
       });
     }
 
-    // Pick most recently modified PDF in case LO generates odd names
+    // Choose most recently modified PDF (handles odd naming)
     const pdfPath = pdfFiles
       .map((name) => ({ name, full: path.join(workDir, name) }))
       .sort((a, b) => fs.statSync(b.full).mtimeMs - fs.statSync(a.full).mtimeMs)[0].full;
 
-    // 2.5) Determine page count (optional)
+    // (Optional) PDF page count
     let pdfPages = null;
     try {
       const info = await runCmd("pdfinfo", [pdfPath], 60000);
       pdfPages = parsePdfPages(info.stdout);
     } catch {
-      // Not fatal
+      // not fatal
     }
 
-    // 3) PDF → PNG (Poppler pdftoppm) => slide-1.png, slide-2.png, ...
+    // 3) PDF → PNG (Poppler pdftoppm)
+    // Output: slide-1.png, slide-2.png, ...
     const prefix = path.join(pngOutDir, "slide");
     await runCmd("pdftoppm", ["-png", "-r", "150", pdfPath, prefix], 300000);
 
@@ -123,9 +143,9 @@ app.post("/convert", async (req, res) => {
         error: "conversion_failed",
         message: "pdftoppm produced no PNG files",
         details: {
+          pdfPages,
           workDirFiles: safeListDir(workDir),
-          outDirFiles: safeListDir(pngOutDir),
-          pdfPages
+          outDirFiles: safeListDir(pngOutDir)
         }
       });
     }

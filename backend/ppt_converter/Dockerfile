@@ -1,14 +1,17 @@
 FROM node:20-slim
 
-# Install LibreOffice and required dependencies
 RUN apt-get update && \
     apt-get install -y \
       libreoffice \
       libreoffice-impress \
       fonts-dejavu \
       fonts-liberation \
-      ca-certificates && \
+      ca-certificates \
+      poppler-utils && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Verify poppler is present (fail build if missing)
+RUN command -v pdftoppm && pdftoppm -h >/dev/null
 
 WORKDIR /app
 

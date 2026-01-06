@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/theme.dart';
 
-import 'data/repo/mock_deck_repo.dart';
+import 'data/repo/deck_repo.dart';
 import 'data/repo/firestore_deck_repo.dart';
 
 import 'features/auth/auth_gate.dart';
@@ -18,7 +18,8 @@ import 'features/settings/settings_screen.dart';
 
 import 'features/review/review_screen.dart';
 
-final _repo = MockDeckRepo();
+// ✅ Use Firestore repo app-wide so list + open deck use the same source.
+final DeckRepo _repo = FirestoreDeckRepo();
 
 class MedDeckApp extends StatelessWidget {
   const MedDeckApp({super.key});
@@ -54,11 +55,11 @@ class MedDeckApp extends StatelessWidget {
               ],
             ),
 
-            // ✅✅✅ ADMIN REVIEW ROUTE (absolute path)
+            // ✅ Admin review route (absolute path)
             GoRoute(
               path: '/review',
               builder: (context, state) => ReviewScreen(
-                repo: FirestoreDeckRepo(),
+                repo: FirestoreDeckRepo(), // ✅ use same repo
               ),
             ),
 

@@ -2,11 +2,10 @@
 import 'package:go_router/go_router.dart';
 
 import '../../data/repo/deck_repo.dart';
-import '../../data/repo/firestore_deck_repo.dart';
 import '../../widgets/deck_grid.dart';
 
 class LibraryScreen extends StatelessWidget {
-  final DeckRepo repo; // keep for existing navigation
+  final DeckRepo repo;
   final bool isAdmin;
 
   const LibraryScreen({
@@ -17,8 +16,6 @@ class LibraryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fs = FirestoreDeckRepo();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Library'),
@@ -37,7 +34,7 @@ class LibraryScreen extends StatelessWidget {
         ],
       ),
       body: FutureBuilder(
-        future: fs.listApprovedDecks(),
+        future: repo.listApprovedDecks(), // ✅ use injected repo
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

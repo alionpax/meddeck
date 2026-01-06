@@ -1,27 +1,45 @@
 ﻿import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/deck.dart';
 
-class FirestoreDeckRepo {
+import 'package:meddeck/data/models/deck.dart';
+import 'package:meddeck/data/repo/deck_repo.dart';
+
+
+
+class FirestoreDeckRepo implements DeckRepo {
   final _db = FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _col => _db.collection('decks');
 
+  @override
   Future<List<Deck>> listApprovedDecks() async {
     final q = await _col
         .where('status', isEqualTo: 'approved')
         .orderBy('createdAt', descending: true)
         .get();
 
-    return q.docs.map(_fromDoc).toList();
+    return q.docs.map(_fromQueryDoc).toList();
   }
 
+  // Not part of DeckRepo, but used by admin/review screens
   Future<List<Deck>> listPendingDecks() async {
     final q = await _col
         .where('status', isEqualTo: 'pending')
         .orderBy('createdAt', descending: true)
         .get();
 
-    return q.docs.map(_fromDoc).toList();
+    return q.docs.map(_fromQueryDoc).toList();
+  }
+
+  @override
+  Future<Deck?> getDeck(String id) async {
+    final snap = await _col.doc(id).get();
+    if (!snap.exists) return null;
+
+    final data = snap.data();
+    if (data == null) return null;
+
+    // Use the same parsing logic as query docs
+    return _fromMap(id, data);
   }
 
   /// For now this creates a "metadata-only" deck entry for workflow testing.
@@ -39,7 +57,7 @@ class FirestoreDeckRepo {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
 
-      // Fields required by your Deck model:
+      // Fields required by your Deck model (old URL-based fields)
       'slideCount': 0,
       'source': 'user',
       'coverImageUrl': '',
@@ -54,17 +72,36 @@ class FirestoreDeckRepo {
     }, SetOptions(merge: true));
   }
 
-  Deck _fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
-    final m = d.data();
+  Deck _fromQueryDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
+    return _fromMap(d.id, d.data());
+  }
+
+  Deck _fromMap(String id, Map<String, dynamic> m) {
+    final slideImageUrlsRaw = m['slideImageUrls'];
+    final slidesRaw = m['slides'];
 
     return Deck(
-      id: d.id,
-      title: (m['title'] as String?) ?? 'Untitled',
-      specialty: (m['specialty'] as String?) ?? 'General',
-      slideCount: (m['slideCount'] as int?) ?? 0,
-      source: (m['source'] as String?) ?? 'unknown',
-      coverImageUrl: (m['coverImageUrl'] as String?) ?? '',
-      slideImageUrls: List<String>.from((m['slideImageUrls'] as List?) ?? const []),
+      id: id,
+      title: (m['title'] ?? 'Untitled').toString(),
+      specialty: (m['specialty'] ?? 'General').toString(),
+
+      // Firestore numeric safety
+      slideCount: (m['slideCount'] as num?)?.toInt() ?? 0,
+
+      source: (m['source'] ?? 'unknown').toString(),
+      coverImageUrl: (m['coverImageUrl'] ?? '').toString(),
+
+      slideImageUrls: (slideImageUrlsRaw is List)
+          ? slideImageUrlsRaw.map((e) => e.toString()).toList()
+          : const <String>[],
+
+      // ✅ New fields for auto-convert pipeline
+      slides: (slidesRaw is List)
+          ? slidesRaw.map((e) => e.toString()).toList()
+          : const <String>[],
+      coverSlide: m['coverSlide']?.toString(),
+
+      pptUrl: m['pptUrl']?.toString(),
     );
   }
 }

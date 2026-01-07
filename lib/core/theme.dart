@@ -195,6 +195,103 @@ ThemeData buildMonochromeTheme({bool dark = false}) {
   );
 }
 
+// MedDeck theme: coral-to-purple gradient inspired by the app icon
+ThemeData buildMedDeckTheme({bool dark = false}) {
+  const primary = Color(0xFFE85B9A); // coral-pink from icon
+  const secondary = Color(0xFF7B3FF2); // purple from icon
+  const accent = Color(0xFFFF6B4C); // coral accent
+  const bgLight = Color(0xFFFDF7FA);
+  const bgDark = Color(0xFF1A1423);
+
+  final colorScheme = ColorScheme(
+    brightness: dark ? Brightness.dark : Brightness.light,
+    primary: primary,
+    onPrimary: Colors.white,
+    secondary: secondary,
+    onSecondary: Colors.white,
+    error: Colors.red.shade400,
+    onError: Colors.white,
+    background: dark ? bgDark : bgLight,
+    onBackground: dark ? Colors.white : Colors.black87,
+    surface: dark ? const Color(0xFF2A1F35) : Colors.white,
+    onSurface: dark ? Colors.white : Colors.black87,
+    tertiary: accent,
+    onTertiary: Colors.white,
+    outline: dark ? Colors.white24 : Colors.black26,
+    shadow: Colors.black,
+    surfaceVariant: dark ? const Color(0xFF3A2E45) : const Color(0xFFF3E5F5),
+  );
+
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: colorScheme,
+    brightness: dark ? Brightness.dark : Brightness.light,
+  );
+
+  final textTheme = base.textTheme.copyWith(
+    titleLarge: base.textTheme.titleLarge?.copyWith(
+      fontSize: 22,
+      fontWeight: FontWeight.w700,
+      color: colorScheme.onBackground,
+    ),
+    titleMedium: base.textTheme.titleMedium?.copyWith(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      color: colorScheme.onBackground,
+    ),
+    bodyMedium: base.textTheme.bodyMedium?.copyWith(
+      fontSize: 15,
+      fontWeight: FontWeight.w400,
+      color: colorScheme.onBackground,
+    ),
+    bodySmall: base.textTheme.bodySmall?.copyWith(
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      color: colorScheme.onBackground.withOpacity(0.85),
+    ),
+  );
+
+  return base.copyWith(
+    scaffoldBackgroundColor: colorScheme.background,
+    cardColor: colorScheme.surface,
+    textTheme: textTheme,
+    appBarTheme: AppBarTheme(
+      backgroundColor: colorScheme.surface,
+      elevation: 1,
+      surfaceTintColor: colorScheme.surface,
+      iconTheme: IconThemeData(color: colorScheme.primary),
+      titleTextStyle: textTheme.titleLarge,
+    ),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      selectedItemColor: colorScheme.primary,
+      unselectedItemColor: colorScheme.onBackground.withOpacity(0.68),
+      backgroundColor: colorScheme.surface,
+    ),
+    cardTheme: CardThemeData(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: colorScheme.primary,
+        side: BorderSide(color: colorScheme.primary.withOpacity(0.18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    ),
+    listTileTheme: ListTileThemeData(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    ),
+  );
+}
+
 TextTheme _safeApply(TextTheme Function() fn, TextTheme fallback) {
   try {
     return fn();

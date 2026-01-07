@@ -11,7 +11,7 @@ class SettingsScreen extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
     final email = user?.email ?? 'Unknown';
     final box = Hive.box('offline');
-    final currentTheme = box.get('theme', defaultValue: 'playful') as String;
+    final currentTheme = box.get('theme', defaultValue: 'meddeck') as String;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -50,6 +50,7 @@ class SettingsScreen extends StatelessWidget {
                   child: DropdownButtonFormField<String>(
                     value: currentTheme,
                     items: const [
+                      DropdownMenuItem(value: 'meddeck', child: Text('MedDeck (Coral-Purple)')),
                       DropdownMenuItem(value: 'playful', child: Text('Playful Aurora')),
                       DropdownMenuItem(value: 'medical', child: Text('Medical Atlas')),
                       DropdownMenuItem(value: 'forest', child: Text('Forest Green')),

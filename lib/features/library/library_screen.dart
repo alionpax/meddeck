@@ -95,11 +95,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ],
         bottom: PreferredSize(
-          // Increased height to fit search and filters without overflow
-          preferredSize: const Size.fromHeight(180),
+          // Adjusted height for side-by-side dropdowns
+          preferredSize: const Size.fromHeight(160),
           child: Padding(
             // Add extra top padding to push the search field further down
-            padding: const EdgeInsets.fromLTRB(16, 28, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Column(
               children: [
                 // Search field (more compact)
@@ -124,66 +124,54 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
 
-                // Filters row (responsive)
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final maxW = constraints.maxWidth;
-                    final double gutter = 12;
-                    // If narrow, stack; otherwise place side-by-side
-                    final double itemW = maxW < 420 ? maxW : (maxW - gutter) / 2;
-
-                    return Wrap(
-                      spacing: gutter,
-                      runSpacing: 8,
-                      children: [
-                        SizedBox(
-                          width: itemW,
-                          child: DropdownButtonFormField<String>(
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: 'Specialty',
-                              filled: true,
-                              fillColor: Theme.of(context).colorScheme.surface,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            value: _specialty,
-                            items: specialties
-                                .map((s) => DropdownMenuItem(
-                                      value: s,
-                                      child: Text(
-                                        s,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ))
-                                .toList(),
-                            onChanged: (v) => setState(() => _specialty = v ?? 'All'),
-                          ),
+                // Filters row (side-by-side)
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Specialty',
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surface,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        SizedBox(
-                          width: itemW,
-                          child: DropdownButtonFormField<String>(
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: 'Upload date',
-                              filled: true,
-                              fillColor: Theme.of(context).colorScheme.surface,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            value: _dateRange,
-                            items: const [
-                              DropdownMenuItem(value: 'Any', child: Text('Any')),
-                              DropdownMenuItem(value: '24h', child: Text('Last 24h')),
-                              DropdownMenuItem(value: '7d', child: Text('Last 7 days')),
-                              DropdownMenuItem(value: '30d', child: Text('Last 30 days')),
-                            ],
-                            onChanged: (v) => setState(() => _dateRange = v ?? 'Any'),
-                          ),
+                        value: _specialty,
+                        items: specialties
+                            .map((s) => DropdownMenuItem(
+                                  value: s,
+                                  child: Text(
+                                    s,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ))
+                            .toList(),
+                        onChanged: (v) => setState(() => _specialty = v ?? 'All'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Upload date',
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surface,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                      ],
-                    );
-                  },
+                        value: _dateRange,
+                        items: const [
+                          DropdownMenuItem(value: 'Any', child: Text('Any')),
+                          DropdownMenuItem(value: '24h', child: Text('Last 24h')),
+                          DropdownMenuItem(value: '7d', child: Text('Last 7 days')),
+                          DropdownMenuItem(value: '30d', child: Text('Last 30 days')),
+                        ],
+                        onChanged: (v) => setState(() => _dateRange = v ?? 'Any'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

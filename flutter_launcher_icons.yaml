@@ -1,0 +1,19 @@
+flutter_launcher_icons:
+  image_path: "art/icon/icon.png"
+  image_path_ios: "art/icon/icon.png"
+  
+  android:
+    notification_icon: "notification_icon"
+    notification_icon_color: "#FF6B4C"
+    
+  ios:
+    enabled: true
+  
+  macos:
+    enabled: false
+  
+  windows:
+    enabled: false
+  
+  web:
+    enabled: false

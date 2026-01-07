@@ -115,9 +115,11 @@ class MedDeckApp extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: box.listenable(keys: ['theme']),
       builder: (context, _, __) {
-        final choice = box.get('theme', defaultValue: 'medical') as String; // default to Medical Atlas for demo
+        final choice = box.get('theme', defaultValue: 'meddeck') as String; // default to MedDeck theme
         final theme = () {
           switch (choice) {
+            case 'meddeck':
+              return buildMedDeckTheme();
             case 'medical':
               return buildMedicalTheme();
             case 'playful':
@@ -127,7 +129,7 @@ class MedDeckApp extends StatelessWidget {
             case 'mono':
               return buildMonochromeTheme();
             default:
-              return buildMedicalTheme();
+              return buildMedDeckTheme();
           }
         }();
 

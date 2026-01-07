@@ -167,7 +167,7 @@ ThemeData buildMedicalTheme({bool dark = false}) {
       unselectedItemColor: colorScheme.onBackground.withOpacity(0.68),
       backgroundColor: colorScheme.surface,
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),

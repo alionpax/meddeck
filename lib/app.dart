@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import 'core/theme.dart';
 
@@ -45,12 +46,27 @@ class MedDeckApp extends StatelessWidget {
                 ),
                 GoRoute(
                   path: 'viewer/:id',
-                  builder: (context, state) => SlideViewerScreen(
-                    repo: _repo,
-                    deckId: state.pathParameters['id']!,
-                    initialIndex:
-                        int.tryParse(state.uri.queryParameters['i'] ?? '0') ?? 0,
-                  ),
+                  pageBuilder: (context, state) {
+                    final idx = int.tryParse(state.uri.queryParameters['i'] ?? '0') ?? 0;
+                    return CustomTransitionPage(
+                      key: state.pageKey,
+                      child: SlideViewerScreen(
+                        repo: _repo,
+                        deckId: state.pathParameters['id']!,
+                        initialIndex: idx,
+                      ),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+                        return FadeTransition(
+                          opacity: curve,
+                          child: ScaleTransition(
+                            scale: Tween<double>(begin: 0.98, end: 1.0).animate(curve),
+                            child: child,
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
               ],
             ),
@@ -89,10 +105,21 @@ class MedDeckApp extends StatelessWidget {
       ],
     );
 
-    return MaterialApp.router(
-      title: 'MedDeck',
-      theme: buildClinicalTheme(),
-      routerConfig: router,
+    // Listen to Hive box 'offline' for persisted theme preference.
+    final box = Hive.box('offline');
+
+    return ValueListenableBuilder(
+      valueListenable: box.listenable(keys: ['theme']),
+      builder: (context, _, __) {
+        final choice = box.get('theme', defaultValue: 'playful') as String;
+        final theme = choice == 'medical' ? buildMedicalTheme() : buildPlayfulTheme();
+
+        return MaterialApp.router(
+          title: 'MedDeck',
+          theme: theme,
+          routerConfig: router,
+        );
+      },
     );
   }
 }

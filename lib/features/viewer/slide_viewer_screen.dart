@@ -31,10 +31,18 @@ class _SlideViewerScreenState extends State<SlideViewerScreen> {
     super.initState();
     _page = widget.initialIndex;
     _controller = PageController(initialPage: widget.initialIndex);
+
+    // Listen to page controller for continuous parallax and progress updates
+    _controller.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onScroll);
     _controller.dispose();
     super.dispose();
   }
@@ -42,11 +50,11 @@ class _SlideViewerScreenState extends State<SlideViewerScreen> {
   void _toggleUi() => setState(() => _uiVisible = !_uiVisible);
 
   Future<String> _resolveToUrl(String maybeUrlOrStoragePath) {
-    if (maybeUrlOrStoragePath.startsWith('http://') ||
-        maybeUrlOrStoragePath.startsWith('https://')) {
-      return Future.value(maybeUrlOrStoragePath);
+    final s = maybeUrlOrStoragePath.trim();
+    if (s.startsWith('http://') || s.startsWith('https://')) {
+      return Future.value(s);
     }
-    return FirebaseStorage.instance.ref(maybeUrlOrStoragePath).getDownloadURL();
+    return FirebaseStorage.instance.ref(s).getDownloadURL();
   }
 
   Future<String> _getUrlCached(String key) {
@@ -58,14 +66,14 @@ class _SlideViewerScreenState extends State<SlideViewerScreen> {
     return FutureBuilder(
       future: widget.repo.getDeck(widget.deckId),
       builder: (context, snap) {
-        // 1) Loading state
+        // Loading
         if (snap.connectionState != ConnectionState.done) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // 2) Error state (this fixes the "spinner forever" problem)
+        // Error
         if (snap.hasError) {
           return Scaffold(
             backgroundColor: const Color(0xFF0B0B0B),
@@ -82,7 +90,7 @@ class _SlideViewerScreenState extends State<SlideViewerScreen> {
           );
         }
 
-        // 3) No data / not found
+        // Not found
         final deck = snap.data;
         if (deck == null) {
           return const Scaffold(
@@ -90,22 +98,16 @@ class _SlideViewerScreenState extends State<SlideViewerScreen> {
           );
         }
 
-        // Prefer old URLs, fall back to new Storage paths
+        // URL-first, fallback to storage paths if needed
         final List<String> slideRefs =
             deck.slideImageUrls.isNotEmpty ? deck.slideImageUrls : deck.slides;
-
-        debugPrint(
-          "DECK DEBUG: slideImageUrls=${deck.slideImageUrls.length}, "
-          "slides=${deck.slides.length}, "
-          "using=${slideRefs.length}",
-        );
 
         if (slideRefs.isEmpty) {
           return const Scaffold(
             backgroundColor: Color(0xFF0B0B0B),
             body: Center(
               child: Text(
-                'No slides found on this deck.',
+                'Slides are not ready yet.',
                 style: TextStyle(color: Colors.white70),
               ),
             ),
@@ -113,99 +115,206 @@ class _SlideViewerScreenState extends State<SlideViewerScreen> {
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFF0B0B0B),
-          body: Stack(
-            children: [
-              // Debug overlay visible in-app
-              Positioned(
-                left: 12,
-                top: 60,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  color: Colors.black54,
-                  child: Text(
-                    'slideImageUrls=${deck.slideImageUrls.length}\n'
-                    'slides=${deck.slides.length}\n'
-                    'using=${slideRefs.length}\n'
-                    'page=${_page + 1}',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+          body: AnimatedContainer(
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Theme.of(context).colorScheme.primary.withOpacity(0.06), Theme.of(context).colorScheme.surface],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: Stack(
+              children: [
+                // moving background glow (parallax)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Builder(builder: (context) {
+                      final page = _controller.hasClients ? (_controller.page ?? _controller.initialPage.toDouble()) : _page.toDouble();
+                      final norm = slideRefs.length > 1 ? (page / (slideRefs.length - 1)).clamp(0.0, 1.0) : 0.5;
+
+                      return Transform.translate(
+                        offset: Offset((norm - 0.5) * 120, 0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              colors: [
+                                Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                                Theme.of(context).colorScheme.secondary.withOpacity(0.04),
+                                Colors.transparent,
+                              ],
+                              radius: 0.8,
+                              center: Alignment.center,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
                   ),
                 ),
-              ),
 
-              GestureDetector(
-                onTap: _toggleUi,
-                child: PageView.builder(
-                  controller: _controller,
-                  itemCount: slideRefs.length,
-                  onPageChanged: (i) => setState(() => _page = i),
-                  itemBuilder: (context, index) {
-                    final ref = slideRefs[index];
+                // PageView with parallax + interactive zoom
+                GestureDetector(
+                  onTap: _toggleUi,
+                  child: PageView.builder(
+                    controller: _controller,
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: slideRefs.length,
+                    onPageChanged: (i) => setState(() => _page = i),
+                    itemBuilder: (context, index) {
+                      final ref = slideRefs[index];
 
-                    return InteractiveViewer(
-                      minScale: 1,
-                      maxScale: 4,
-                      child: Center(
-                        child: FutureBuilder<String>(
-                          future: _getUrlCached(ref),
-                          builder: (context, urlSnap) {
-                            if (urlSnap.connectionState != ConnectionState.done) {
-                              return const CircularProgressIndicator();
-                            }
+                      return LayoutBuilder(
+                        builder: (context, constraints) {
+                          // compute parallax offset from PageController.page
+                          double pageOffset = 0;
+                          try {
+                            pageOffset = (_controller.page ?? _controller.initialPage.toDouble()) - index;
+                          } catch (_) {}
 
-                            if (urlSnap.hasError) {
-                              return Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Text(
-                                  'Failed to resolve slide ${index + 1}\n\n${urlSnap.error}',
-                                  style: const TextStyle(color: Colors.white70),
-                                  textAlign: TextAlign.center,
-                                ),
-                              );
-                            }
+                          final parallax = pageOffset * constraints.maxWidth * 0.15;
 
-                            return CachedNetworkImage(
-                              imageUrl: urlSnap.data!,
-                              fit: BoxFit.contain,
-                              placeholder: (c, _) =>
-                                  const CircularProgressIndicator(),
-                              errorWidget: (c, err, __) => Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Text(
-                                  'Image request failed:\n$err',
-                                  style: const TextStyle(color: Colors.white70),
-                                  textAlign: TextAlign.center,
-                                ),
+                          return InteractiveViewer(
+                            minScale: 1,
+                            maxScale: 4,
+                            child: Center(
+                              child: FutureBuilder<String>(
+                                future: _getUrlCached(ref),
+                                builder: (context, urlSnap) {
+                                  if (urlSnap.connectionState != ConnectionState.done) {
+                                    return const CircularProgressIndicator();
+                                  }
+
+                                  if (urlSnap.hasError) {
+                                    return Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Text(
+                                        'Failed to resolve slide ${index + 1}\n\n${urlSnap.error}',
+                                        style: const TextStyle(color: Colors.white70),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    );
+                                  }
+
+                                  return FractionalTranslation(
+                                    translation: Offset(parallax / constraints.maxWidth, 0),
+                                    child: Hero(
+                                      tag: 'deck_${deck.id}_cover',
+                                      child: CachedNetworkImage(
+                                        imageUrl: urlSnap.data!,
+                                        fit: BoxFit.contain,
+                                        placeholder: (c, _) => const CircularProgressIndicator(),
+                                        errorWidget: (c, err, __) => Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Text(
+                                            'Image request failed:\n$err',
+                                            style: const TextStyle(color: Colors.white70),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+
+                // Top UI
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 300),
+                  top: _uiVisible ? 0 : -80,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${_page + 1} / ${slideRefs.length}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Bottom progress indicator
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 300),
+                  bottom: _uiVisible ? 16 : -48,
+                  left: 16,
+                  right: 16,
+                  child: SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Progress bar
+                        _buildProgressBar(slideRefs.length),
+                        const SizedBox(height: 8),
+                        // Page dots
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(slideRefs.length, (i) {
+                            final selected = i == _page;
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 280),
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              width: selected ? 18 : 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: selected ? Theme.of(context).colorScheme.primary : Colors.white24,
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             );
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              if (_uiVisible)
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${_page + 1} / ${slideRefs.length}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          }),
                         ),
                       ],
                     ),
                   ),
                 ),
-            ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProgressBar(int total) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final page = _controller.hasClients ? (_controller.page ?? _controller.initialPage.toDouble()) : _page.toDouble();
+        final progress = ((page + 1) / total).clamp(0.0, 1.0);
+        return Container(
+          width: double.infinity,
+          height: 6,
+          decoration: BoxDecoration(
+            color: Colors.white24,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: progress,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
           ),
         );
       },

@@ -22,7 +22,19 @@ class DeckGrid extends StatelessWidget {
         childAspectRatio: 0.82,
       ),
       itemCount: decks.length,
-      itemBuilder: (context, i) => DeckCard(deck: decks[i], onTap: () => onDeckTap(decks[i])),
+      itemBuilder: (context, i) => TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: Duration(milliseconds: 360 + (i % 6) * 40),
+        curve: Curves.easeOutCubic,
+        builder: (context, val, child) => Opacity(
+          opacity: val,
+          child: Transform.translate(
+            offset: Offset(0, (1 - val) * 8),
+            child: child,
+          ),
+        ),
+        child: DeckCard(deck: decks[i], onTap: () => onDeckTap(decks[i])),
+      ),
     );
   }
 }

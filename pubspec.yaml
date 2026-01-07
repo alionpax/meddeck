@@ -23,6 +23,7 @@ dependencies:
   # Auth providers
   google_sign_in: ^6.2.1
   google_fonts: ^5.0.0
+  confetti: ^0.6.0
 
   # File picking (PPT upload)
   file_picker: ^8.0.0

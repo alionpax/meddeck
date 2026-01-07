@@ -80,6 +80,16 @@ class FirestoreDeckRepo implements DeckRepo {
     final slideImageUrlsRaw = m['slideImageUrls'];
     final slidesRaw = m['slides'];
 
+    DateTime uploadedAt = DateTime.fromMillisecondsSinceEpoch(0);
+    final ca = m['createdAt'];
+    if (ca is Timestamp) {
+      uploadedAt = ca.toDate();
+    } else if (ca is String) {
+      try {
+        uploadedAt = DateTime.parse(ca);
+      } catch (_) {}
+    }
+
     return Deck(
       id: id,
       title: (m['title'] ?? 'Untitled').toString(),
@@ -102,6 +112,7 @@ class FirestoreDeckRepo implements DeckRepo {
       coverSlide: m['coverSlide']?.toString(),
 
       pptUrl: m['pptUrl']?.toString(),
+      uploadedAt: uploadedAt,
     );
   }
 }

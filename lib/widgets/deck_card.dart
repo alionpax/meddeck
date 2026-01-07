@@ -1,9 +1,11 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../data/models/deck.dart';
+import 'package:meddeck/widgets/safe_network_image.dart';
 
 class DeckCard extends StatefulWidget {
   final Deck deck;
-  final VoidCallback onTap;
+  final void Function(int initialIndex) onTap;
 
   const DeckCard({
     super.key,
@@ -17,17 +19,22 @@ class DeckCard extends StatefulWidget {
 
 class _DeckCardState extends State<DeckCard> with SingleTickerProviderStateMixin {
   bool _pressed = false;
+  bool _isDragging = false;
+  int _previewIndex = 0;
   late final AnimationController _controller;
+  late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _pageController = PageController();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -46,15 +53,11 @@ class _DeckCardState extends State<DeckCard> with SingleTickerProviderStateMixin
     final colors = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onTapDown: _onTapDown,
-      onTapCancel: () => _onTapUp(null),
-      onTapUp: _onTapUp,
-      onTap: () {
-        // quick pulse on tap for microinteraction
-        _controller.forward(from: 0);
-        widget.onTap();
-      },
       behavior: HitTestBehavior.opaque,
+      // Tapping (when not dragging the PageView) opens the deck detail at the current preview index
+      onTap: () {
+        if (!_isDragging) widget.onTap(_previewIndex);
+      },
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
@@ -85,6 +88,7 @@ class _DeckCardState extends State<DeckCard> with SingleTickerProviderStateMixin
                     ),
                   ),
                 ),
+
 
                 // Card surface
                 Container(
@@ -120,13 +124,67 @@ class _DeckCardState extends State<DeckCard> with SingleTickerProviderStateMixin
                             children: [
                               Hero(
                                 tag: 'deck_${widget.deck.id}_cover',
-                                child: Image.network(
-                                  widget.deck.coverImageUrl,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: Colors.grey.shade200,
-                                    child: const Icon(Icons.image_not_supported),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      // PageView for preview thumbnails (falls back to cover image)
+                                      NotificationListener<ScrollNotification>(
+                                        onNotification: (n) {
+                                          if (n is ScrollStartNotification) setState(() => _isDragging = true);
+                                          if (n is ScrollEndNotification) setState(() => _isDragging = false);
+                                          return false;
+                                        },
+                                        child: PageView.builder(
+                                          controller: _pageController,
+                                          itemCount: (widget.deck.slideImageUrls.isNotEmpty)
+                                              ? widget.deck.slideImageUrls.length
+                                              : 1,
+                                          onPageChanged: (i) => setState(() => _previewIndex = i),
+                                          itemBuilder: (context, i) {
+                                            final url = (widget.deck.slideImageUrls.isNotEmpty)
+                                                ? widget.deck.slideImageUrls[i]
+                                                : widget.deck.coverImageUrl;
+                                            return Stack(
+                                              fit: StackFit.expand,
+                                              children: [
+                                                // Image only — tapping the card opens detail; use explicit play button for quick preview
+                                                SafeNetworkImage(
+                                                  url: url,
+                                                  fit: BoxFit.cover,
+                                                ),
+
+
+                                              ],
+                                            );
+                                          },
+                                        ),
+                                      ),
+
+                                      // Page indicator
+                                      if ((widget.deck.slideImageUrls.isNotEmpty && widget.deck.slideImageUrls.length > 1))
+                                        Positioned(
+                                          bottom: 8,
+                                          left: 0,
+                                          right: 0,
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: List.generate(
+                                              widget.deck.slideImageUrls.length,
+                                              (i) => Container(
+                                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                                width: _previewIndex == i ? 10 : 6,
+                                                height: 6,
+                                                decoration: BoxDecoration(
+                                                  color: _previewIndex == i ? Theme.of(context).colorScheme.primary : Colors.white.withOpacity(0.6),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
                               ),

@@ -39,10 +39,14 @@ class MedDeckApp extends StatelessWidget {
               routes: [
                 GoRoute(
                   path: 'deck/:id',
-                  builder: (context, state) => DeckDetailScreen(
-                    repo: _repo,
-                    deckId: state.pathParameters['id']!,
-                  ),
+                  builder: (context, state) {
+                    final idx = int.tryParse(state.uri.queryParameters['i'] ?? '0') ?? 0;
+                    return DeckDetailScreen(
+                      repo: _repo,
+                      deckId: state.pathParameters['id']!,
+                      initialIndex: idx,
+                    );
+                  },
                 ),
                 GoRoute(
                   path: 'viewer/:id',
@@ -129,8 +133,8 @@ class _ScaffoldShell extends StatelessWidget {
   const _ScaffoldShell({required this.child});
 
   int _indexForLocation(String loc) {
-    if (loc.startsWith('/offline')) return 2;
-    if (loc.startsWith('/uploads')) return 3;
+    if (loc.startsWith('/offline')) return 1;
+    if (loc.startsWith('/uploads')) return 2;
     return 0; // Library (and other routes)
   }
 
@@ -149,12 +153,9 @@ class _ScaffoldShell extends StatelessWidget {
               context.go('/');
               break;
             case 1:
-              context.go('/'); // search placeholder
-              break;
-            case 2:
               context.go('/offline');
               break;
-            case 3:
+            case 2:
               context.go('/uploads');
               break;
           }
@@ -163,10 +164,6 @@ class _ScaffoldShell extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(Icons.grid_view_outlined),
             label: 'Library',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search_outlined),
-            label: 'Search',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.download_outlined),

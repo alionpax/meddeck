@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:meddeck/widgets/safe_network_image.dart';
 
 class ReorderSlidesScreen extends StatefulWidget {
   final String deckId;
@@ -63,9 +64,8 @@ class _ReorderSlidesScreenState
         },
         itemBuilder: (_, i) => ListTile(
           key: ValueKey(_slides[i]),
-          leading: Image.network(
-            _slides[i],
-            width: 56,
+          leading: SafeNetworkImage(
+            url: _slides[i],
             fit: BoxFit.cover,
           ),
           title: Text('Slide ${i + 1}'),

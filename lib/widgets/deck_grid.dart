@@ -4,7 +4,7 @@ import 'deck_card.dart';
 
 class DeckGrid extends StatelessWidget {
   final List<Deck> decks;
-  final void Function(Deck deck) onDeckTap;
+  final void Function(Deck deck, int initialIndex) onDeckTap;
 
   const DeckGrid({super.key, required this.decks, required this.onDeckTap});
 
@@ -33,7 +33,7 @@ class DeckGrid extends StatelessWidget {
             child: child,
           ),
         ),
-        child: DeckCard(deck: decks[i], onTap: () => onDeckTap(decks[i])),
+        child: DeckCard(deck: decks[i], onTap: (idx) => onDeckTap(decks[i], idx)),
       ),
     );
   }

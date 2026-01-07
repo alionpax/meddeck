@@ -1,6 +1,14 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+TextTheme _safeApply(TextTheme Function() fn, TextTheme fallback) {
+  try {
+    return fn();
+  } catch (_) {
+    return fallback;
+  }
+}
+
 // Legacy theme kept for reference. Prefer `buildPlayfulTheme()` for the new UI.
 ThemeData buildClinicalTheme() {
   const bg = Color(0xFFFAFAFA);
@@ -72,12 +80,12 @@ ThemeData buildPlayfulTheme({bool dark = false}) {
     brightness: dark ? Brightness.dark : Brightness.light,
   );
 
-  final textTheme = GoogleFonts.poppinsTextTheme(base.textTheme).copyWith(
-    titleLarge: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: colorScheme.onBackground),
-    titleMedium: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: colorScheme.onBackground),
-    bodyMedium: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
-    bodySmall: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: colorScheme.onBackground.withOpacity(0.9)),
-  );
+  final textTheme = _safeApply(() => GoogleFonts.poppinsTextTheme(base.textTheme).copyWith(
+        titleLarge: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: colorScheme.onBackground),
+        titleMedium: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: colorScheme.onBackground),
+        bodyMedium: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
+        bodySmall: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: colorScheme.onBackground.withOpacity(0.9)),
+      ), base.textTheme);
 
   return base.copyWith(
     scaffoldBackgroundColor: colorScheme.background,
@@ -144,12 +152,12 @@ ThemeData buildMedicalTheme({bool dark = false}) {
     brightness: dark ? Brightness.dark : Brightness.light,
   );
 
-  final textTheme = GoogleFonts.merriweatherTextTheme(base.textTheme).copyWith(
-    titleLarge: GoogleFonts.merriweather(fontSize: 22, fontWeight: FontWeight.w700, color: colorScheme.onBackground),
-    titleMedium: GoogleFonts.merriweather(fontSize: 16, fontWeight: FontWeight.w600, color: colorScheme.onBackground),
-    bodyMedium: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
-    bodySmall: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: colorScheme.onBackground.withOpacity(0.85)),
-  );
+  final textTheme = _safeApply(() => GoogleFonts.merriweatherTextTheme(base.textTheme).copyWith(
+        titleLarge: GoogleFonts.merriweather(fontSize: 22, fontWeight: FontWeight.w700, color: colorScheme.onBackground),
+        titleMedium: GoogleFonts.merriweather(fontSize: 16, fontWeight: FontWeight.w600, color: colorScheme.onBackground),
+        bodyMedium: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
+        bodySmall: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: colorScheme.onBackground.withOpacity(0.85)),
+      ), base.textTheme);
 
   return base.copyWith(
     scaffoldBackgroundColor: colorScheme.background,

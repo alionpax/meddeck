@@ -14,8 +14,9 @@
   final List<String> slides;  // e.g. ["ppts/.../slide_001.png", ...]
 
   final String? pptUrl;
+  final DateTime uploadedAt;
 
-  const Deck({
+  Deck({
     required this.id,
     required this.title,
     required this.specialty,
@@ -29,11 +30,19 @@
 
     this.coverSlide,
     this.pptUrl,
-  });
+    DateTime? uploadedAt,
+  }) : uploadedAt = uploadedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   factory Deck.fromJson(String id, Map<String, dynamic> json) {
     final slideImageUrlsRaw = json['slideImageUrls'];
     final slidesRaw = json['slides'];
+
+    DateTime uploaded = DateTime.fromMillisecondsSinceEpoch(0);
+    try {
+      final ts = json['createdAt'];
+      if (ts is DateTime) uploaded = ts;
+      // Firestore returns Timestamp objects when read from snapshots; repo handles mapping
+    } catch (_) {}
 
     return Deck(
       id: id,
@@ -53,6 +62,7 @@
 
       coverSlide: json['coverSlide']?.toString(),
       pptUrl: json['pptUrl']?.toString(),
+      uploadedAt: uploaded,
     );
   }
 }

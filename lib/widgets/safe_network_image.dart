@@ -1,6 +1,5 @@
 ﻿import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:meddeck/widgets/safe_network_image.dart';
 
 class SafeNetworkImage extends StatelessWidget {
   final String url;
@@ -29,10 +28,24 @@ class SafeNetworkImage extends StatelessWidget {
       );
     }
 
-    return SafeNetworkImage(
-  url: u,
-  fit: fit,
-);
+    return CachedNetworkImage(
+      imageUrl: u,
+      fit: fit,
+      placeholder: (context, url) => Container(
+        color: Colors.black12,
+        alignment: Alignment.center,
+        child: const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      errorWidget: (context, url, error) => Container(
+        color: Colors.black12,
+        alignment: Alignment.center,
+        child: const Icon(Icons.broken_image, size: 28, color: Colors.black38),
+      ),
+    );
   }
 }
 

@@ -116,7 +116,20 @@ class MedDeckApp extends StatelessWidget {
       valueListenable: box.listenable(keys: ['theme']),
       builder: (context, _, __) {
         final choice = box.get('theme', defaultValue: 'medical') as String; // default to Medical Atlas for demo
-        final theme = choice == 'medical' ? buildMedicalTheme() : buildPlayfulTheme();
+        final theme = () {
+          switch (choice) {
+            case 'medical':
+              return buildMedicalTheme();
+            case 'playful':
+              return buildPlayfulTheme();
+            case 'forest':
+              return buildForestTheme();
+            case 'mono':
+              return buildMonochromeTheme();
+            default:
+              return buildMedicalTheme();
+          }
+        }();
 
         return MaterialApp.router(
           title: 'MedDeck',

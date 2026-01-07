@@ -146,134 +146,133 @@ class _UploadsScreenState extends State<UploadsScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'PowerPoint details',
-                style: theme.textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-
-              Form(
-                key: _formKey,
-                child: TextFormField(
-                  controller: _titleCtrl,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'PowerPoint details',
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                Form(
+                  key: _formKey,
+                  child: TextFormField(
+                    controller: _titleCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Topic',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a topic' : null,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedSpecialty,
+                  items: _specialties
+                      .map(
+                        (s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(s),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setState(() => _selectedSpecialty = v);
+                    }
+                  },
                   decoration: const InputDecoration(
-                    labelText: 'Topic',
+                    labelText: 'Specialty',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a topic' : null,
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              DropdownButtonFormField<String>(
-                value: _selectedSpecialty,
-                items: _specialties
-                    .map(
-                      (s) => DropdownMenuItem(
-                        value: s,
-                        child: Text(s),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) {
-                    setState(() => _selectedSpecialty = v);
-                  }
-                },
-                decoration: const InputDecoration(
-                  labelText: 'Specialty',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 28),
+                Text(
+                  'Presentation file',
+                  style: theme.textTheme.titleMedium,
                 ),
-              ),
-
-              const SizedBox(height: 28),
-              Text(
-                'Presentation file',
-                style: theme.textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-
-              // File picker card
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (_pptName == null) ...[
-                            Text('No file selected', style: theme.textTheme.bodySmall),
-                            const SizedBox(height: 8),
-                            Text('PPT / PPTX only. Max 100MB', style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
-                          ] else ...[
-                            Text(_pptName!, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
-                            if (_pptSize != null) Text('${(_pptSize! / (1024 * 1024)).toStringAsFixed(1)} MB', style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
-                          ],
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    Column(
-                      children: [
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.attach_file),
-                          label: const Text('Select'),
-                          onPressed: _pickPpt,
-                        ),
-                        const SizedBox(height: 8),
-                        IconButton(
-                          onPressed: _pptName == null ? null : () => setState(() { _pptFile = null; _pptName = null; _pptSize = null; }),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              if (_uploadProgress != null) ...[
                 const SizedBox(height: 12),
-                LinearProgressIndicator(value: _uploadProgress),
-                const SizedBox(height: 6),
-                Text('${(_uploadProgress! * 100).toStringAsFixed(0)}% uploaded', style: theme.textTheme.bodySmall),
-              ],
-
-              const Spacer(),
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.cloud_upload),
-                  label: Text(
-                    _uploading
-                        ? 'Uploading…'
-                        : 'Submit for review',
+                // File picker card
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  onPressed:
-                      (_pptFile == null || _uploading)
-                          ? null
-                          : _uploadPpt,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_pptName == null) ...[
+                              Text('No file selected', style: theme.textTheme.bodySmall),
+                              const SizedBox(height: 8),
+                              Text('PPT / PPTX only. Max 100MB', style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                            ] else ...[
+                              Text(
+                                _pptName!,
+                                style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                              if (_pptSize != null) Text('${(_pptSize! / (1024 * 1024)).toStringAsFixed(1)} MB', style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Column(
+                          children: [
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.attach_file),
+                              label: const Text('Select'),
+                              onPressed: _pickPpt,
+                            ),
+                            const SizedBox(height: 8),
+                            IconButton(
+                              onPressed: _pptName == null ? null : () => setState(() { _pptFile = null; _pptName = null; _pptSize = null; }),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-
-              const SizedBox(height: 8),
-              Text(
-                'All uploads are reviewed before becoming publicly visible.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: Colors.grey),
-              ),
-            ],
+                if (_uploadProgress != null) ...[
+                  const SizedBox(height: 12),
+                  LinearProgressIndicator(value: _uploadProgress),
+                  const SizedBox(height: 6),
+                  Text('${(_uploadProgress! * 100).toStringAsFixed(0)}% uploaded', style: theme.textTheme.bodySmall),
+                ],
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.cloud_upload),
+                    label: Text(
+                      _uploading
+                          ? 'Uploading…'
+                          : 'Submit for review',
+                    ),
+                    onPressed:
+                        (_pptFile == null || _uploading)
+                            ? null
+                            : _uploadPpt,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'All uploads are reviewed before becoming publicly visible.',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: Colors.grey),
+                ),
+              ],
+            ),
           ),
         ),
       ),

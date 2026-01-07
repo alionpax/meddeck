@@ -1,5 +1,199 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+
+// Forest Green theme: nature-inspired, calming, green-focused
+ThemeData buildForestTheme({bool dark = false}) {
+  const primary = Color(0xFF2E7D32); // forest green
+  const secondary = Color(0xFF81C784); // light green
+  const accent = Color(0xFFFFD600); // yellow accent
+  const bgLight = Color(0xFFF1F8E9);
+  const bgDark = Color(0xFF1B2B1B);
+
+  final colorScheme = ColorScheme(
+    brightness: dark ? Brightness.dark : Brightness.light,
+    primary: primary,
+    onPrimary: Colors.white,
+    secondary: secondary,
+    onSecondary: Colors.white,
+    error: Colors.red.shade400,
+    onError: Colors.white,
+    background: dark ? bgDark : bgLight,
+    onBackground: dark ? Colors.white : Colors.black,
+    surface: dark ? const Color(0xFF263A29) : Colors.white,
+    onSurface: dark ? Colors.white : Colors.black,
+    tertiary: accent,
+    onTertiary: Colors.black,
+    outline: dark ? Colors.white24 : Colors.black26,
+    shadow: Colors.black,
+    surfaceVariant: dark ? const Color(0xFF2E3D2F) : const Color(0xFFE8F5E9),
+  );
+
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: colorScheme,
+    brightness: dark ? Brightness.dark : Brightness.light,
+  );
+
+  final textTheme = base.textTheme.copyWith(
+    titleLarge: base.textTheme.titleLarge?.copyWith(
+      fontSize: 22,
+      fontWeight: FontWeight.w700,
+      color: colorScheme.onBackground,
+    ),
+    titleMedium: base.textTheme.titleMedium?.copyWith(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      color: colorScheme.onBackground,
+    ),
+    bodyMedium: base.textTheme.bodyMedium?.copyWith(
+      fontSize: 15,
+      fontWeight: FontWeight.w400,
+      color: colorScheme.onBackground,
+    ),
+    bodySmall: base.textTheme.bodySmall?.copyWith(
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      color: colorScheme.onBackground.withOpacity(0.85),
+    ),
+  );
+
+  return base.copyWith(
+    scaffoldBackgroundColor: colorScheme.background,
+    cardColor: colorScheme.surface,
+    textTheme: textTheme,
+    appBarTheme: AppBarTheme(
+      backgroundColor: colorScheme.surface,
+      elevation: 1,
+      surfaceTintColor: colorScheme.surface,
+      iconTheme: IconThemeData(color: colorScheme.primary),
+      titleTextStyle: textTheme.titleLarge,
+    ),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      selectedItemColor: colorScheme.primary,
+      unselectedItemColor: colorScheme.onBackground.withOpacity(0.68),
+      backgroundColor: colorScheme.surface,
+    ),
+    cardTheme: CardThemeData(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: colorScheme.primary,
+        side: BorderSide(color: colorScheme.primary.withOpacity(0.18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    ),
+    listTileTheme: ListTileThemeData(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    ),
+  );
+}
+
+// Monochrome theme: grayscale, minimal, high-contrast
+ThemeData buildMonochromeTheme({bool dark = false}) {
+  const primary = Color(0xFF222222);
+  const secondary = Color(0xFF888888);
+  const accent = Color(0xFFCCCCCC);
+  const bgLight = Color(0xFFF8F8F8);
+  const bgDark = Color(0xFF181818);
+
+  final colorScheme = ColorScheme(
+    brightness: dark ? Brightness.dark : Brightness.light,
+    primary: primary,
+    onPrimary: Colors.white,
+    secondary: secondary,
+    onSecondary: Colors.white,
+    error: Colors.red.shade400,
+    onError: Colors.white,
+    background: dark ? bgDark : bgLight,
+    onBackground: dark ? Colors.white : Colors.black,
+    surface: dark ? const Color(0xFF232323) : Colors.white,
+    onSurface: dark ? Colors.white : Colors.black,
+    tertiary: accent,
+    onTertiary: Colors.black,
+    outline: dark ? Colors.white24 : Colors.black26,
+    shadow: Colors.black,
+    surfaceVariant: dark ? const Color(0xFF232323) : const Color(0xFFE0E0E0),
+  );
+
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: colorScheme,
+    brightness: dark ? Brightness.dark : Brightness.light,
+  );
+
+  final textTheme = base.textTheme.copyWith(
+    titleLarge: base.textTheme.titleLarge?.copyWith(
+      fontSize: 22,
+      fontWeight: FontWeight.w700,
+      color: colorScheme.onBackground,
+    ),
+    titleMedium: base.textTheme.titleMedium?.copyWith(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      color: colorScheme.onBackground,
+    ),
+    bodyMedium: base.textTheme.bodyMedium?.copyWith(
+      fontSize: 15,
+      fontWeight: FontWeight.w400,
+      color: colorScheme.onBackground,
+    ),
+    bodySmall: base.textTheme.bodySmall?.copyWith(
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      color: colorScheme.onBackground.withOpacity(0.85),
+    ),
+  );
+
+  return base.copyWith(
+    scaffoldBackgroundColor: colorScheme.background,
+    cardColor: colorScheme.surface,
+    textTheme: textTheme,
+    appBarTheme: AppBarTheme(
+      backgroundColor: colorScheme.surface,
+      elevation: 1,
+      surfaceTintColor: colorScheme.surface,
+      iconTheme: IconThemeData(color: colorScheme.primary),
+      titleTextStyle: textTheme.titleLarge,
+    ),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      selectedItemColor: colorScheme.primary,
+      unselectedItemColor: colorScheme.onBackground.withOpacity(0.68),
+      backgroundColor: colorScheme.surface,
+    ),
+    cardTheme: CardThemeData(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: colorScheme.primary,
+        side: BorderSide(color: colorScheme.primary.withOpacity(0.18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    ),
+    listTileTheme: ListTileThemeData(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    ),
+  );
+}
 
 TextTheme _safeApply(TextTheme Function() fn, TextTheme fallback) {
   try {
@@ -18,17 +212,36 @@ ThemeData buildClinicalTheme() {
   const divider = Color(0xFFE5E7EB);
   const accent = Color(0xFF2563EB);
 
-  final base = ThemeData(useMaterial3: true, colorScheme: ColorScheme.fromSeed(seedColor: accent));
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(seedColor: accent),
+  );
 
   return base.copyWith(
     scaffoldBackgroundColor: bg,
     cardColor: surface,
     dividerColor: divider,
     textTheme: base.textTheme.copyWith(
-      titleLarge: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: textPrimary),
-      titleMedium: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textPrimary),
-      bodyMedium: const TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: textPrimary),
-      bodySmall: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: textSecondary),
+      titleLarge: const TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w600,
+        color: textPrimary,
+      ),
+      titleMedium: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: textPrimary,
+      ),
+      bodyMedium: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+        color: textPrimary,
+      ),
+      bodySmall: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+        color: textSecondary,
+      ),
     ),
     appBarTheme: const AppBarTheme(
       backgroundColor: bg,
@@ -80,12 +293,28 @@ ThemeData buildPlayfulTheme({bool dark = false}) {
     brightness: dark ? Brightness.dark : Brightness.light,
   );
 
-  final textTheme = _safeApply(() => GoogleFonts.poppinsTextTheme(base.textTheme).copyWith(
-        titleLarge: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: colorScheme.onBackground),
-        titleMedium: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: colorScheme.onBackground),
-        bodyMedium: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
-        bodySmall: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: colorScheme.onBackground.withOpacity(0.9)),
-      ), base.textTheme);
+  final textTheme = base.textTheme.copyWith(
+    titleLarge: base.textTheme.titleLarge?.copyWith(
+      fontSize: 22,
+      fontWeight: FontWeight.w700,
+      color: colorScheme.onBackground,
+    ),
+    titleMedium: base.textTheme.titleMedium?.copyWith(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      color: colorScheme.onBackground,
+    ),
+    bodyMedium: base.textTheme.bodyMedium?.copyWith(
+      fontSize: 15,
+      fontWeight: FontWeight.w400,
+      color: colorScheme.onBackground,
+    ),
+    bodySmall: base.textTheme.bodySmall?.copyWith(
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      color: colorScheme.onBackground.withOpacity(0.9),
+    ),
+  );
 
   return base.copyWith(
     scaffoldBackgroundColor: colorScheme.background,
@@ -152,12 +381,28 @@ ThemeData buildMedicalTheme({bool dark = false}) {
     brightness: dark ? Brightness.dark : Brightness.light,
   );
 
-  final textTheme = _safeApply(() => GoogleFonts.merriweatherTextTheme(base.textTheme).copyWith(
-        titleLarge: GoogleFonts.merriweather(fontSize: 22, fontWeight: FontWeight.w700, color: colorScheme.onBackground),
-        titleMedium: GoogleFonts.merriweather(fontSize: 16, fontWeight: FontWeight.w600, color: colorScheme.onBackground),
-        bodyMedium: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400, color: colorScheme.onBackground),
-        bodySmall: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: colorScheme.onBackground.withOpacity(0.85)),
-      ), base.textTheme);
+  final textTheme = base.textTheme.copyWith(
+    titleLarge: base.textTheme.titleLarge?.copyWith(
+      fontSize: 22,
+      fontWeight: FontWeight.w700,
+      color: colorScheme.onBackground,
+    ),
+    titleMedium: base.textTheme.titleMedium?.copyWith(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      color: colorScheme.onBackground,
+    ),
+    bodyMedium: base.textTheme.bodyMedium?.copyWith(
+      fontSize: 15,
+      fontWeight: FontWeight.w400,
+      color: colorScheme.onBackground,
+    ),
+    bodySmall: base.textTheme.bodySmall?.copyWith(
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      color: colorScheme.onBackground.withOpacity(0.85),
+    ),
+  );
 
   return base.copyWith(
     scaffoldBackgroundColor: colorScheme.background,
@@ -194,6 +439,8 @@ ThemeData buildMedicalTheme({bool dark = false}) {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     ),
-    listTileTheme: ListTileThemeData(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
+    listTileTheme: ListTileThemeData(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    ),
   );
 }

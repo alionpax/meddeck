@@ -168,17 +168,27 @@ class _DeckCardState extends State<DeckCard> with SingleTickerProviderStateMixin
                                           bottom: 8,
                                           left: 0,
                                           right: 0,
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: List.generate(
-                                              widget.deck.slideImageUrls.length,
-                                              (i) => Container(
-                                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                                width: _previewIndex == i ? 10 : 6,
-                                                height: 6,
-                                                decoration: BoxDecoration(
-                                                  color: _previewIndex == i ? Theme.of(context).colorScheme.primary : Colors.white.withOpacity(0.6),
-                                                  borderRadius: BorderRadius.circular(6),
+                                          child: Center(
+                                            child: SizedBox(
+                                              height: 6,
+                                              child: SingleChildScrollView(
+                                                scrollDirection: Axis.horizontal,
+                                                physics: const BouncingScrollPhysics(),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: List.generate(
+                                                    widget.deck.slideImageUrls.length,
+                                                    (i) => Container(
+                                                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                                                      width: _previewIndex == i ? 10 : 6,
+                                                      height: 6,
+                                                      decoration: BoxDecoration(
+                                                        color: _previewIndex == i ? Theme.of(context).colorScheme.primary : Colors.white.withOpacity(0.6),
+                                                        borderRadius: BorderRadius.circular(6),
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                             ),

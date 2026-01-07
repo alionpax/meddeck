@@ -52,6 +52,8 @@ class SettingsScreen extends StatelessWidget {
                     items: const [
                       DropdownMenuItem(value: 'playful', child: Text('Playful Aurora')),
                       DropdownMenuItem(value: 'medical', child: Text('Medical Atlas')),
+                      DropdownMenuItem(value: 'forest', child: Text('Forest Green')),
+                      DropdownMenuItem(value: 'mono', child: Text('Monochrome')),
                     ],
                     onChanged: (v) {
                       if (v == null) return;

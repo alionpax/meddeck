@@ -25,10 +25,31 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String _dateRange = 'Any';
 
   List<Deck> _allDecks = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   Future<void> _loadDecks() async {
-    final d = await widget.repo.listApprovedDecks();
-    if (mounted) setState(() => _allDecks = d);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final d = await widget.repo.listApprovedDecks();
+      if (mounted) {
+        setState(() {
+          _allDecks = d;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -178,20 +199,200 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ),
       ),
-      body: _allDecks.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : Builder(builder: (context) {
-              final filtered = _applyFilters();
-              if (filtered.isEmpty) {
-                return const Center(child: Text('No decks match your filters'));
-              }
+      body: _buildBody(),
+    );
+  }
 
-              return DeckGrid(
-                decks: filtered,
-                // Open deck detail and pass initial index so the big slide loads at the selected preview
-                onDeckTap: (deck, idx) => context.go('/deck/${deck.id}?i=$idx'),
-              );
-            }),
+  Widget _buildBody() {
+    if (_isLoading) {
+      return _buildLoadingSkeleton();
+    }
+
+    if (_errorMessage != null) {
+      return _buildErrorState();
+    }
+
+    if (_allDecks.isEmpty) {
+      return _buildEmptyLibrary();
+    }
+
+    final filtered = _applyFilters();
+    if (filtered.isEmpty) {
+      return _buildNoResults();
+    }
+
+    return DeckGrid(
+      decks: filtered,
+      onDeckTap: (deck, idx) => context.go('/deck/${deck.id}?i=$idx'),
+    );
+  }
+
+  Widget _buildLoadingSkeleton() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemCount: 6,
+      itemBuilder: (context, index) => Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Container(
+                color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 16,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceVariant,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 14,
+                    width: 100,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 80,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Failed to load library',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage ?? 'Unknown error',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+            ),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: _loadDecks,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyLibrary() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.collections_bookmark_outlined,
+              size: 120,
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No decks yet',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Upload your first PowerPoint to get started',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+            ),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: () => context.go('/uploads'),
+              icon: const Icon(Icons.upload_file),
+              label: const Text('Upload Deck'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoResults() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 80,
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No matches found',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Try adjusting your filters or search query',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+            ),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: () {
+                setState(() {
+                  _searchController.clear();
+                  _specialty = 'All';
+                  _dateRange = 'Any';
+                });
+              },
+              icon: const Icon(Icons.clear_all),
+              label: const Text('Clear Filters'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
+

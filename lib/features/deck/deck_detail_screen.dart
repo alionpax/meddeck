@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../widgets/safe_network_image.dart';
 import '../../data/repo/deck_repo.dart';
 import '../../widgets/slide_thumbnail_strip.dart';
@@ -65,9 +66,52 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final box = Hive.box('offline');
 
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        actions: [
+          ValueListenableBuilder(
+            valueListenable: box.listenable(),
+            builder: (context, Box boxData, _) {
+              final isOffline = boxData.containsKey('deck_${widget.deckId}');
+
+              return IconButton(
+                icon: Icon(
+                  isOffline ? Icons.download_done : Icons.download_outlined,
+                  color: isOffline ? Theme.of(context).colorScheme.primary : null,
+                ),
+                tooltip: isOffline ? 'Saved offline' : 'Download for offline',
+                onPressed: () async {
+                  if (isOffline) {
+                    // Remove from offline
+                    await box.delete('deck_${widget.deckId}');
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Removed from offline')),
+                      );
+                    }
+                  } else {
+                    // Save for offline
+                    final deck = await widget.repo.getDeck(widget.deckId);
+                    if (deck != null) {
+                      await box.put('deck_${widget.deckId}', deck.toMap());
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Saved for offline access'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    }
+                  }
+                },
+              );
+            },
+          ),
+        ],
+      ),
       body: FutureBuilder(
         future: widget.repo.getDeck(widget.deckId),
         builder: (context, snap) {
@@ -112,7 +156,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                                 InteractiveViewer(
                                   minScale: 1,
                                   maxScale: 4,
-                                  child: Hero(tag: 'deck_${deck.id}_cover', child: SafeNetworkImage(url: currentUrl, fit: BoxFit.contain)),
+                                  child: Hero(tag: 'deck_${deck.id}_slide_$_selectedIndex', child: SafeNetworkImage(url: currentUrl, fit: BoxFit.contain)),
                                 )
                               else
                                 Hero(tag: 'deck_${deck.id}_cover', child: SafeNetworkImage(url: currentUrl, fit: BoxFit.contain)),

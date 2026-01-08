@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:confetti/confetti.dart';
 
 class UploadsScreen extends StatefulWidget {
   const UploadsScreen({super.key});
@@ -16,6 +17,7 @@ class UploadsScreen extends StatefulWidget {
 class _UploadsScreenState extends State<UploadsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
+  late ConfettiController _confettiController;
 
   final List<String> _specialties = const [
     'General',
@@ -37,6 +39,19 @@ class _UploadsScreenState extends State<UploadsScreen> {
 
   bool _uploading = false;
   double? _uploadProgress;
+
+  @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    _titleCtrl.dispose();
+    super.dispose();
+  }
 
   // ---------- Pick PPT ----------
   Future<void> _pickPpt() async {
@@ -111,7 +126,10 @@ class _UploadsScreenState extends State<UploadsScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      _toast('Upload submitted for review');
+      if (mounted) {
+        _confettiController.play();
+        _showSuccessDialog();
+      }
 
       setState(() {
         _pptFile = null;
@@ -122,11 +140,82 @@ class _UploadsScreenState extends State<UploadsScreen> {
         _uploadProgress = null;
       });
     } catch (e) {
-      _toast('Upload failed');
+      if (mounted) {
+        _showErrorDialog(e.toString());
+      }
       debugPrint(e.toString());
     } finally {
       setState(() => _uploading = false);
     }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            SizedBox(width: 12),
+            Text('Upload Successful!'),
+          ],
+        ),
+        content: const Text(
+          'Your PowerPoint has been submitted for review.\n\n'
+          'You\'ll be able to see it in the Library once an admin approves it.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Great!'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red, size: 28),
+            SizedBox(width: 12),
+            Text('Upload Failed'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Something went wrong with your upload.'),
+            const SizedBox(height: 12),
+            Text(
+              'Error: $error',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontFamily: 'monospace',
+                    color: Colors.grey,
+                  ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _uploadPpt();
+            },
+            child: const Text('Try Again'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _toast(String msg) {
@@ -143,10 +232,12 @@ class _UploadsScreenState extends State<UploadsScreen> {
       appBar: AppBar(
         title: const Text('Submit PowerPoint File for Review'),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -275,6 +366,28 @@ class _UploadsScreenState extends State<UploadsScreen> {
             ),
           ),
         ),
+          ),
+          // Confetti overlay
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              particleDrag: 0.05,
+              emissionFrequency: 0.05,
+              numberOfParticles: 30,
+              gravity: 0.2,
+              shouldLoop: false,
+              colors: const [
+                Colors.green,
+                Colors.blue,
+                Colors.pink,
+                Colors.orange,
+                Colors.purple,
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

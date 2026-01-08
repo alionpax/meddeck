@@ -65,4 +65,25 @@
       uploadedAt: uploaded,
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'specialty': specialty,
+      'slideCount': slideCount,
+      'source': source,
+      'coverImageUrl': coverImageUrl,
+      'slideImageUrls': slideImageUrls,
+      'slides': slides,
+      'coverSlide': coverSlide,
+      'pptUrl': pptUrl,
+      'createdAt': uploadedAt,
+    };
+  }
+
+  static Deck fromMap(Map<String, dynamic> map) {
+    return Deck.fromJson(map['id'] as String, map);
+  }
 }
+

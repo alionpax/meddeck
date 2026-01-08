@@ -162,11 +162,11 @@ class _ScaffoldShell extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        final isAuthenticated = snapshot.data != null;
+        final isLoggedIn = snapshot.data != null;
 
         return Scaffold(
           body: child,
-          bottomNavigationBar: isAuthenticated
+          bottomNavigationBar: isLoggedIn
               ? BottomNavigationBar(
                   currentIndex: idx,
                   onTap: (i) {
@@ -197,7 +197,7 @@ class _ScaffoldShell extends StatelessWidget {
                     ),
                   ],
                 )
-              : null,
+              : null, // No navigation bar when not logged in
         );
       },
     );

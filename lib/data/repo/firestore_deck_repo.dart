@@ -61,7 +61,7 @@ class FirestoreDeckRepo implements DeckRepo {
       'slideCount': 0,
       'source': 'user',
       'coverImageUrl': '',
-      'slideImageUrls': <String>[],
+      'slides': <String>[], // Storage paths will be populated by Cloud Functions
     });
   }
 

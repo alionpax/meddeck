@@ -5,13 +5,15 @@
   final int slideCount;
   final String source;
 
-  // Old URL-based fields (backward compatible)
-  final String coverImageUrl;
-  final List<String> slideImageUrls;
-
-  // New Storage-path-based fields (from Cloud Run + Functions)
-  final String? coverSlide;   // e.g. "ppts/.../slides/slide_001.png"
+  // Storage-path-based fields (permanent, no expiration)
   final List<String> slides;  // e.g. ["ppts/.../slide_001.png", ...]
+  final String? coverSlide;   // e.g. "ppts/.../slides/slide_001.png"
+
+  // Deprecated: Old URL-based fields (kept for backward compatibility)
+  @Deprecated('Use slides instead - URLs expire after 7 days')
+  final String coverImageUrl;
+  @Deprecated('Use slides instead - URLs expire after 7 days')
+  final List<String> slideImageUrls;
 
   final String? pptUrl;
   final DateTime uploadedAt;
@@ -22,11 +24,11 @@
     required this.specialty,
     required this.slideCount,
     required this.source,
-    required this.coverImageUrl,
-    required this.slideImageUrls,
+    required this.slides,
 
-    // ✅ IMPORTANT: default means existing Deck(...) call sites won't break
-    this.slides = const <String>[],
+    // Backward compatibility - deprecated fields
+    this.coverImageUrl = '',
+    this.slideImageUrls = const <String>[],
 
     this.coverSlide,
     this.pptUrl,
@@ -34,8 +36,8 @@
   }) : uploadedAt = uploadedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   factory Deck.fromJson(String id, Map<String, dynamic> json) {
-    final slideImageUrlsRaw = json['slideImageUrls'];
     final slidesRaw = json['slides'];
+    final slideImageUrlsRaw = json['slideImageUrls'];
 
     DateTime uploaded = DateTime.fromMillisecondsSinceEpoch(0);
     try {
@@ -52,12 +54,14 @@
       source: (json['source'] ?? '').toString(),
 
       coverImageUrl: (json['coverImageUrl'] ?? '').toString(),
+      slides: (slidesRaw is List && (slidesRaw as List).isNotEmpty)
+          ? slidesRaw.map((e) => e.toString()).toList()
+          : (slideImageUrlsRaw is List)
+              ? slideImageUrlsRaw.map((e) => e.toString()).toList()
+              : const <String>[],
+
       slideImageUrls: (slideImageUrlsRaw is List)
           ? slideImageUrlsRaw.map((e) => e.toString()).toList()
-          : const <String>[],
-
-      slides: (slidesRaw is List)
-          ? slidesRaw.map((e) => e.toString()).toList()
           : const <String>[],
 
       coverSlide: json['coverSlide']?.toString(),

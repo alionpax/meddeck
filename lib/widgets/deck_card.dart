@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../data/models/deck.dart';
@@ -49,14 +50,24 @@ class _DeckCardState extends State<DeckCard> with SingleTickerProviderStateMixin
     _controller.reverse();
   }
 
+  void _onLongPress() {
+    // Extra haptic feedback on long press
+    HapticFeedback.mediumImpact();
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: () => setState(() => _pressed = false),
+      onLongPress: _onLongPress,
       // Tapping (when not dragging the PageView) opens the deck detail at the current preview index
       onTap: () {
+        HapticFeedback.lightImpact();
         if (!_isDragging) widget.onTap(_previewIndex);
       },
       child: AnimatedBuilder(
@@ -68,10 +79,16 @@ class _DeckCardState extends State<DeckCard> with SingleTickerProviderStateMixin
           // Medical theme uses a cleaner surface with a left accent stripe
           final isMedical = Theme.of(context).colorScheme.primary == const Color(0xFF6A00F4) ? false : true;
 
-          return AnimatedScale(
-            scale: _pressed ? 0.97 : 1.0,
-            duration: const Duration(milliseconds: 160),
-            curve: Curves.easeOutBack,
+          final scale = _pressed ? 0.94 : 1.0;
+          
+          return TweenAnimationBuilder<double>(
+            tween: Tween(begin: scale, end: scale),
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            builder: (context, scaleVal, child) => Transform.scale(
+              scale: scaleVal,
+              child: child,
+            ),
             child: Stack(
               children: [
                 // Glow overlay
@@ -139,14 +156,14 @@ class _DeckCardState extends State<DeckCard> with SingleTickerProviderStateMixin
                                         },
                                         child: PageView.builder(
                                           controller: _pageController,
-                                          itemCount: (widget.deck.slideImageUrls.isNotEmpty)
-                                              ? widget.deck.slideImageUrls.length
-                                              : 1,
+                                          itemCount: (widget.deck.slides.isNotEmpty)
+                                              ? widget.deck.slides.length
+                                              : (widget.deck.slideImageUrls.isNotEmpty ? widget.deck.slideImageUrls.length : 1),
                                           onPageChanged: (i) => setState(() => _previewIndex = i),
                                           itemBuilder: (context, i) {
-                                            final url = (widget.deck.slideImageUrls.isNotEmpty)
-                                                ? widget.deck.slideImageUrls[i]
-                                                : widget.deck.coverImageUrl;
+                                            final url = (widget.deck.slides.isNotEmpty)
+                                                ? widget.deck.slides[i]
+                                                : (widget.deck.slideImageUrls.isNotEmpty ? widget.deck.slideImageUrls[i] : widget.deck.coverImageUrl);
                                             return Stack(
                                               fit: StackFit.expand,
                                               children: [
@@ -164,7 +181,7 @@ class _DeckCardState extends State<DeckCard> with SingleTickerProviderStateMixin
                                       ),
 
                                       // Page indicator
-                                      if ((widget.deck.slideImageUrls.isNotEmpty && widget.deck.slideImageUrls.length > 1))
+                                      if ((widget.deck.slides.isNotEmpty && widget.deck.slides.length > 1) || (widget.deck.slideImageUrls.isNotEmpty && widget.deck.slideImageUrls.length > 1))
                                         Positioned(
                                           bottom: 8,
                                           left: 0,
@@ -179,7 +196,7 @@ class _DeckCardState extends State<DeckCard> with SingleTickerProviderStateMixin
                                                   mainAxisSize: MainAxisSize.min,
                                                   mainAxisAlignment: MainAxisAlignment.center,
                                                   children: List.generate(
-                                                    widget.deck.slideImageUrls.length,
+                                                    widget.deck.slides.isNotEmpty ? widget.deck.slides.length : widget.deck.slideImageUrls.length,
                                                     (i) => Container(
                                                       margin: const EdgeInsets.symmetric(horizontal: 4),
                                                       width: _previewIndex == i ? 10 : 6,

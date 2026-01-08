@@ -9,7 +9,8 @@ const REGION = "us-central1";
 const CONVERTER_URL =
   "https://meddeck-ppt-converter-52591950022.us-central1.run.app/convert";
 
-const SIGNED_URL_EXPIRES = "2035-03-01";
+// No longer needed - we store paths instead of generating signed URLs
+// const SIGNED_URL_EXPIRES = \"2035-03-01\";
 
 export const onDeckApproved = onDocumentUpdated(
   {
@@ -28,8 +29,8 @@ export const onDeckApproved = onDocumentUpdated(
     if (after.status !== "approved" || before.status === "approved") return;
 
     // ✅ Idempotency: if URLs already exist, skip
-    if (Array.isArray(after.slideImageUrls) && after.slideImageUrls.length > 0) {
-      logger.info("slideImageUrls already exist, skipping conversion", { deckId });
+    if (Array.isArray(after.slides) && after.slides.length > 0) {
+      logger.info("slides already exist, skipping conversion", { deckId });
       return;
     }
 
@@ -97,41 +98,26 @@ export const onDeckApproved = onDocumentUpdated(
         throw new Error("Converter returned ok but produced no slides paths");
       }
 
-      // ✅ Convert storage paths -> signed URLs
-      const storageBucket = admin.storage().bucket(bucketName);
-
-      const slideImageUrls: string[] = [];
-      for (const p of slides) {
-        const [url] = await storageBucket.file(p).getSignedUrl({
-          action: "read",
-          expires: SIGNED_URL_EXPIRES,
-        });
-        slideImageUrls.push(url);
-      }
-
-      if (slideImageUrls.length === 0) {
-        throw new Error("Failed to generate signed URLs for slides");
-      }
-
-      // ✅ URL-only writeback
+      // ✅ Write storage paths directly - no signed URLs needed!
+      // The Flutter app will resolve these to URLs on-demand
       await admin.firestore().doc(`decks/${deckId}`).update({
-        slideImageUrls,
-        coverImageUrl: slideImageUrls[0] ?? "",
-        slideCount: slideImageUrls.length,
+        slides,
+        coverSlide: slides[0] ?? "",
+        slideCount: slides.length,
         pdfPages,
 
         conversionStatus: "done",
         conversionError: null,
         convertedAt: admin.firestore.FieldValue.serverTimestamp(),
 
-        // ✅ delete legacy fields so your DB stays clean
-        slides: admin.firestore.FieldValue.delete(),
-        coverSlide: admin.firestore.FieldValue.delete(),
+        // ✅ Clean up deprecated URL fields
+        slideImageUrls: admin.firestore.FieldValue.delete(),
+        coverImageUrl: admin.firestore.FieldValue.delete(),
       });
 
-      logger.info("Deck conversion complete (URL-only)", {
+      logger.info("Deck conversion complete (storage paths)", {
         deckId,
-        slideCount: slideImageUrls.length,
+        slideCount: slides.length,
         pdfPages,
       });
     } catch (err: any) {

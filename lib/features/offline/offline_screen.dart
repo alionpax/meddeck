@@ -40,6 +40,9 @@ class OfflineScreen extends StatelessWidget {
           }
 
           return ListView.builder(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
             padding: const EdgeInsets.all(16),
             itemCount: savedDeckIds.length,
             itemBuilder: (context, idx) {
@@ -50,7 +53,18 @@ class OfflineScreen extends StatelessWidget {
 
               final deck = Deck.fromMap(Map<String, dynamic>.from(deckData));
 
-              return Card(
+              return TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: Duration(milliseconds: 280 + (idx % 5) * 40),
+                curve: Curves.easeOutCubic,
+                builder: (context, val, child) => Opacity(
+                  opacity: val,
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - val) * 10),
+                    child: child,
+                  ),
+                ),
+                child: Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -103,6 +117,7 @@ class OfflineScreen extends StatelessWidget {
                   ),
                   onTap: () => context.go('/deck/$deckId'),
                 ),
+              ),
               );
             },
           );

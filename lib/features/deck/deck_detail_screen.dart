@@ -172,10 +172,15 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
           final deck = snap.data;
           if (deck == null) return const Center(child: Text('Deck not found.'));
 
-          final urls = deck.slideImageUrls.isNotEmpty ? deck.slideImageUrls : [deck.coverImageUrl];
+          final urls = deck.slides.isNotEmpty 
+              ? deck.slides 
+              : (deck.slideImageUrls.isNotEmpty ? deck.slideImageUrls : [deck.coverImageUrl]);
           final currentUrl = (_selectedIndex >= 0 && _selectedIndex < urls.length) ? urls[_selectedIndex] : (urls.isNotEmpty ? urls.first : deck.coverImageUrl);
 
           return ListView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),

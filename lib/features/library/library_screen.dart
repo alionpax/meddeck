@@ -22,9 +22,11 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   String _specialty = 'All';
   String _dateRange = 'Any';
   bool _showFavoritesOnly = false;
+  bool _showSuggestions = false;
 
   List<Deck> _allDecks = [];
   bool _isLoading = true;
@@ -59,11 +61,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
     super.initState();
     _loadDecks();
     _searchController.addListener(() => setState(() {}));
+    _searchFocusNode.addListener(() {
+      setState(() {
+        _showSuggestions = _searchFocusNode.hasFocus && _searchController.text.isNotEmpty;
+      });
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -103,6 +111,29 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }).toList();
   }
 
+  List<String> _getSuggestions() {
+    final q = _searchController.text.toLowerCase().trim();
+    if (q.isEmpty) return [];
+
+    final suggestions = <String>{};
+    
+    // Add matching titles
+    for (final deck in _allDecks) {
+      if (deck.title.toLowerCase().contains(q)) {
+        suggestions.add(deck.title);
+      }
+    }
+
+    // Add matching specialties
+    for (final deck in _allDecks) {
+      if (deck.specialty.toLowerCase().contains(q) && deck.specialty.toLowerCase() != q) {
+        suggestions.add(deck.specialty);
+      }
+    }
+
+    return suggestions.take(5).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final specialties = <String>{'All', ..._allDecks.map((d) => d.specialty)}.toList();
@@ -132,26 +163,105 @@ class _LibraryScreenState extends State<LibraryScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Column(
               children: [
-                // Search field (more compact)
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search by title or specialty',
-                    filled: true,
-                    fillColor: Theme.of(context).colorScheme.surfaceVariant,
-                    prefixIcon: const Icon(Icons.search_outlined),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () => _searchController.clear(),
-                          )
-                        : null,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                // Search field with autocomplete
+                Stack(
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      onChanged: (value) {
+                        setState(() {
+                          _showSuggestions = value.isNotEmpty && _searchFocusNode.hasFocus;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search by title or specialty',
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surfaceVariant,
+                        prefixIcon: const Icon(Icons.search_outlined),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _showSuggestions = false);
+                                },
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
                     ),
-                  ),
+                    
+                    // Suggestions dropdown
+                    if (_showSuggestions && _getSuggestions().isNotEmpty)
+                      Positioned(
+                        top: 52,
+                        left: 0,
+                        right: 0,
+                        child: Material(
+                          elevation: 8,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            constraints: const BoxConstraints(maxHeight: 200),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                              ),
+                            ),
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              itemCount: _getSuggestions().length,
+                              itemBuilder: (context, index) {
+                                final suggestion = _getSuggestions()[index];
+                                return InkWell(
+                                  onTap: () {
+                                    _searchController.text = suggestion;
+                                    _searchFocusNode.unfocus();
+                                    setState(() => _showSuggestions = false);
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.history,
+                                          size: 18,
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            suggestion,
+                                            style: Theme.of(context).textTheme.bodyMedium,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.north_west,
+                                          size: 16,
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
 
                 const SizedBox(height: 8),
@@ -255,9 +365,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
       return _buildNoResults();
     }
 
-    return DeckGrid(
-      decks: filtered,
-      onDeckTap: (deck, idx) => context.go('/deck/${deck.id}?i=$idx'),
+    return GestureDetector(
+      onTap: () {
+        // Dismiss suggestions when tapping on the grid
+        if (_showSuggestions) {
+          _searchFocusNode.unfocus();
+          setState(() => _showSuggestions = false);
+        }
+      },
+      child: DeckGrid(
+        decks: filtered,
+        onDeckTap: (deck, idx) => context.go('/deck/${deck.id}?i=$idx'),
+      ),
     );
   }
 

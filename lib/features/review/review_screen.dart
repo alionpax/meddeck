@@ -73,13 +73,27 @@ class _ReviewScreenState extends State<ReviewScreen> {
               return RefreshIndicator(
                 onRefresh: _refresh,
                 child: ListView.separated(
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
                   padding: const EdgeInsets.all(12),
                   itemCount: decks.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, i) {
                     final d = decks[i];
 
-                    return Container(
+                    return TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: Duration(milliseconds: 300 + (i % 5) * 50),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, val, child) => Opacity(
+                        opacity: val,
+                        child: Transform.translate(
+                          offset: Offset(0, (1 - val) * 12),
+                          child: child,
+                        ),
+                      ),
+                      child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
@@ -168,6 +182,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           ),
                         ],
                       ),
+                    ),
                     );
                   },
                 ),

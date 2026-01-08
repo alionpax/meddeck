@@ -138,9 +138,10 @@ class _SlideViewerScreenState extends State<SlideViewerScreen> {
           );
         }
 
-        // URL-first, fallback to storage paths if needed
-        final List<String> slideRefs =
-            deck.slideImageUrls.isNotEmpty ? deck.slideImageUrls : deck.slides;
+        // Use storage paths (slides) - they never expire and are more efficient
+        final List<String> slideRefs = deck.slides.isNotEmpty 
+            ? deck.slides 
+            : deck.slideImageUrls; // fallback for old data
 
         if (slideRefs.isEmpty) {
           return const Scaffold(
@@ -199,9 +200,14 @@ class _SlideViewerScreenState extends State<SlideViewerScreen> {
                   onTap: _toggleUi,
                   child: PageView.builder(
                     controller: _controller,
-                    physics: _isZoomed ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(),
+                    physics: _isZoomed ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
                     itemCount: slideRefs.length,
-                    onPageChanged: (i) => setState(() => _page = i),
+                    onPageChanged: (i) {
+                      HapticFeedback.selectionClick();
+                      setState(() => _page = i);
+                    },
                     itemBuilder: (context, index) {
                       final ref = slideRefs[index];
 

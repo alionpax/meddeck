@@ -17,6 +17,7 @@ import 'features/viewer/slide_viewer_screen.dart';
 import 'features/offline/offline_screen.dart';
 import 'features/uploads/uploads_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/profile/profile_screen.dart';
 
 import 'features/review/review_screen.dart';
 
@@ -105,6 +106,12 @@ class MedDeckApp extends StatelessWidget {
               path: '/settings',
               builder: (context, state) => const SettingsScreen(),
             ),
+
+            // Profile
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) => const ProfileScreen(),
+            ),
           ],
         ),
       ],
@@ -114,9 +121,11 @@ class MedDeckApp extends StatelessWidget {
     final box = Hive.box('offline');
 
     return ValueListenableBuilder(
-      valueListenable: box.listenable(keys: ['theme']),
+      valueListenable: box.listenable(keys: ['theme', 'darkMode']),
       builder: (context, _, __) {
-        final choice = box.get('theme', defaultValue: 'meddeck') as String; // default to MedDeck theme
+        final choice = box.get('theme', defaultValue: 'meddeck') as String;
+        final isDarkMode = box.get('darkMode', defaultValue: false) as bool;
+        
         final theme = () {
           switch (choice) {
             case 'meddeck':
@@ -137,6 +146,13 @@ class MedDeckApp extends StatelessWidget {
         return MaterialApp.router(
           title: 'MedDeck',
           theme: theme,
+          darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: theme.colorScheme.primary,
+              brightness: Brightness.dark,
+            ),
+          ),
+          themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
           routerConfig: router,
         );
       },

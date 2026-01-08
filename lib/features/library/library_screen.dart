@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../data/repo/deck_repo.dart';
 import '../../data/models/deck.dart';
@@ -23,6 +24,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _specialty = 'All';
   String _dateRange = 'Any';
+  bool _showFavoritesOnly = false;
 
   List<Deck> _allDecks = [];
   bool _isLoading = true;
@@ -68,8 +70,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
   List<Deck> _applyFilters() {
     final q = _searchController.text.toLowerCase().trim();
     final now = DateTime.now();
+    final box = Hive.box('offline');
+    final favorites = box.get('favorites', defaultValue: <String>[]) as List;
 
     return _allDecks.where((d) {
+      // Favorites filter
+      if (_showFavoritesOnly && !favorites.contains(d.id)) {
+        return false;
+      }
+
       // Search query
       if (q.isNotEmpty) {
         final match = d.title.toLowerCase().contains(q) || d.specialty.toLowerCase().contains(q);
@@ -116,8 +125,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ],
         bottom: PreferredSize(
-          // Adjusted height for side-by-side dropdowns
-          preferredSize: const Size.fromHeight(160),
+          // Adjusted height for filters
+          preferredSize: const Size.fromHeight(200),
           child: Padding(
             // Add extra top padding to push the search field further down
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -143,6 +152,31 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       borderSide: BorderSide.none,
                     ),
                   ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Favorites chip
+                ValueListenableBuilder(
+                  valueListenable: Hive.box('offline').listenable(),
+                  builder: (context, Box box, _) {
+                    final favorites = box.get('favorites', defaultValue: <String>[]) as List;
+                    return Row(
+                      children: [
+                        FilterChip(
+                          avatar: Icon(
+                            _showFavoritesOnly ? Icons.favorite : Icons.favorite_border,
+                            size: 18,
+                          ),
+                          label: Text('Favorites (${favorites.length})'),
+                          selected: _showFavoritesOnly,
+                          onSelected: (bool value) {
+                            setState(() => _showFavoritesOnly = value);
+                          },
+                        ),
+                      ],
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 8),
@@ -384,6 +418,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   _searchController.clear();
                   _specialty = 'All';
                   _dateRange = 'Any';
+                  _showFavoritesOnly = false;
                 });
               },
               icon: const Icon(Icons.clear_all),

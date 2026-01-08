@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../data/models/deck.dart';
 import 'package:meddeck/widgets/safe_network_image.dart';
 
@@ -194,6 +195,44 @@ class _DeckCardState extends State<DeckCard> with SingleTickerProviderStateMixin
                                             ),
                                           ),
                                         ),
+
+                                      // Favorite button
+                                      Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: ValueListenableBuilder(
+                                          valueListenable: Hive.box('offline').listenable(),
+                                          builder: (context, Box box, _) {
+                                            final favorites = box.get('favorites', defaultValue: <String>[]) as List;
+                                            final isFavorite = favorites.contains(widget.deck.id);
+
+                                            return Material(
+                                              color: Colors.black.withOpacity(0.5),
+                                              borderRadius: BorderRadius.circular(20),
+                                              child: InkWell(
+                                                borderRadius: BorderRadius.circular(20),
+                                                onTap: () {
+                                                  final updatedFavorites = List<String>.from(favorites);
+                                                  if (isFavorite) {
+                                                    updatedFavorites.remove(widget.deck.id);
+                                                  } else {
+                                                    updatedFavorites.add(widget.deck.id);
+                                                  }
+                                                  box.put('favorites', updatedFavorites);
+                                                },
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(8),
+                                                  child: Icon(
+                                                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                                                    color: isFavorite ? Colors.red : Colors.white,
+                                                    size: 20,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),

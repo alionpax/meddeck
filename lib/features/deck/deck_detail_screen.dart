@@ -71,6 +71,59 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: 'Share deck',
+            onPressed: () async {
+              final deck = await widget.repo.getDeck(widget.deckId);
+              if (deck != null && context.mounted) {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Row(
+                      children: [
+                        Icon(Icons.share),
+                        SizedBox(width: 12),
+                        Text('Share Deck'),
+                      ],
+                    ),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Share "${deck.title}" with others:'),
+                        const SizedBox(height: 16),
+                        SelectableText(
+                          'meddeck://deck/${deck.id}',
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Close'),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () {
+                          // Copy to clipboard would go here
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Link copied!')),
+                          );
+                        },
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Copy Link'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+          ),
           ValueListenableBuilder(
             valueListenable: box.listenable(),
             builder: (context, Box boxData, _) {

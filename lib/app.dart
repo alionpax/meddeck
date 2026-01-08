@@ -123,36 +123,28 @@ class MedDeckApp extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: box.listenable(keys: ['theme', 'darkMode']),
       builder: (context, _, __) {
-        final choice = box.get('theme', defaultValue: 'meddeck') as String;
+        final choice = box.get('theme', defaultValue: 'playful') as String;
         final isDarkMode = box.get('darkMode', defaultValue: false) as bool;
         
         final theme = () {
           switch (choice) {
-            case 'meddeck':
-              return buildMedDeckTheme();
-            case 'medical':
-              return buildMedicalTheme();
             case 'playful':
-              return buildPlayfulTheme();
+              return buildPlayfulTheme(dark: isDarkMode);
+            case 'tropical':
+              return buildTropicalTheme(dark: isDarkMode);
+            case 'candy':
+              return buildCandyTheme(dark: isDarkMode);
             case 'forest':
-              return buildForestTheme();
-            case 'mono':
-              return buildMonochromeTheme();
+              return buildForestTheme(dark: isDarkMode);
             default:
-              return buildMedDeckTheme();
+              return buildPlayfulTheme(dark: isDarkMode);
           }
         }();
 
         return MaterialApp.router(
           title: 'MedDeck',
           theme: theme,
-          darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: theme.colorScheme.primary,
-              brightness: Brightness.dark,
-            ),
-          ),
-          themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          themeMode: ThemeMode.light,
           routerConfig: router,
         );
       },

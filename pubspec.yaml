@@ -37,6 +37,10 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
 
+  # Document metadata extraction
+  archive: ^3.6.1
+  xml: ^6.5.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

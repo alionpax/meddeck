@@ -10,16 +10,13 @@ class DeckGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
-    final cols = w >= 900 ? 4 : (w >= 600 ? 3 : 2);
-
     return GridView.builder(
       padding: const EdgeInsets.all(16),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: cols,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 1,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 0.82,
+        childAspectRatio: 1.0,
       ),
       itemCount: decks.length,
       itemBuilder: (context, i) => TweenAnimationBuilder<double>(

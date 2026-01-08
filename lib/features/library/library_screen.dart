@@ -265,8 +265,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.75,
+        crossAxisCount: 1,
+        childAspectRatio: 1.0,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),

@@ -6,6 +6,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
+import 'package:archive/archive.dart';
+import 'package:xml/xml.dart' as xml;
 
 class UploadsScreen extends StatefulWidget {
   const UploadsScreen({super.key});
@@ -17,6 +19,8 @@ class UploadsScreen extends StatefulWidget {
 class _UploadsScreenState extends State<UploadsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
+  final _presenterCtrl = TextEditingController();
+  final _dateCtrl = TextEditingController();
   late ConfettiController _confettiController;
 
   final List<String> _specialties = const [
@@ -50,6 +54,8 @@ class _UploadsScreenState extends State<UploadsScreen> {
   void dispose() {
     _confettiController.dispose();
     _titleCtrl.dispose();
+    _presenterCtrl.dispose();
+    _dateCtrl.dispose();
     super.dispose();
   }
 
@@ -63,14 +69,106 @@ class _UploadsScreenState extends State<UploadsScreen> {
     if (result == null || result.files.single.path == null) return;
 
     final f = File(result.files.single.path!);
+    final fileName = result.files.single.name;
+
+    // Extract metadata from document
+    String topicSuggestion = '';
+    String presenterName = '';
+    String presentationDate = '';
+
+    try {
+      if (fileName.toLowerCase().endsWith('.pptx')) {
+        // PPTX is a ZIP file, extract metadata from XML
+        final bytes = await f.readAsBytes();
+        final archive = ZipDecoder().decodeBytes(bytes);
+
+        // Extract title from docProps/core.xml
+        final coreFile = archive.findFile('docProps/core.xml');
+        if (coreFile != null) {
+          final coreContent = String.fromCharCodes(coreFile.content as List<int>);
+          final coreDoc = xml.XmlDocument.parse(coreContent);
+          
+          // Try to get title
+          final titleElement = coreDoc.findAllElements('dc:title').firstOrNull;
+          if (titleElement != null && titleElement.innerText.isNotEmpty) {
+            topicSuggestion = titleElement.innerText;
+          }
+          
+          // Try to get creator/author
+          final creatorElement = coreDoc.findAllElements('dc:creator').firstOrNull;
+          if (creatorElement != null && creatorElement.innerText.isNotEmpty) {
+            presenterName = creatorElement.innerText;
+          }
+          
+          // Try to get created date
+          final createdElement = coreDoc.findAllElements('dcterms:created').firstOrNull;
+          if (createdElement != null && createdElement.innerText.isNotEmpty) {
+            try {
+              final dateStr = createdElement.innerText;
+              final parsedDate = DateTime.parse(dateStr);
+              presentationDate = '${parsedDate.year}-${parsedDate.month.toString().padLeft(2, '0')}-${parsedDate.day.toString().padLeft(2, '0')}';
+            } catch (_) {}
+          }
+        }
+
+        // If title not found in core.xml, try app.xml
+        if (topicSuggestion.isEmpty) {
+          final appFile = archive.findFile('docProps/app.xml');
+          if (appFile != null) {
+            final appContent = String.fromCharCodes(appFile.content as List<int>);
+            final appDoc = xml.XmlDocument.parse(appContent);
+            final titlesElement = appDoc.findAllElements('TitlesOfParts').firstOrNull;
+            if (titlesElement != null && titlesElement.innerText.isNotEmpty) {
+              topicSuggestion = titlesElement.innerText;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error extracting metadata: $e');
+    }
+
+    // Fallback to filename if metadata extraction failed
+    if (topicSuggestion.isEmpty) {
+      topicSuggestion = fileName
+          .replaceAll(RegExp(r'\.(ppt|pptx)$', caseSensitive: false), '')
+          .replaceAll(RegExp(r'[_-]+'), ' ')
+          .trim();
+    }
+
+    // Fallback to current user if no presenter found
+    if (presenterName.isEmpty) {
+      final user = FirebaseAuth.instance.currentUser;
+      presenterName = user?.displayName ?? user?.email?.split('@').first ?? 'Unknown Presenter';
+    }
+
+    // Fallback to today's date if no date found
+    if (presentationDate.isEmpty) {
+      final today = DateTime.now();
+      presentationDate = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    }
+
+    int? fileSize;
+    try {
+      fileSize = f.lengthSync();
+    } catch (_) {
+      fileSize = null;
+    }
 
     setState(() {
       _pptFile = f;
-      _pptName = result.files.single.name;
-      try {
-        _pptSize = f.lengthSync();
-      } catch (_) {
-        _pptSize = null;
+      _pptName = fileName;
+      _pptSize = fileSize;
+
+      // Auto-fill form fields (user can edit these)
+      if (_titleCtrl.text.isEmpty) {
+        _titleCtrl.text = topicSuggestion;
+      }
+      if (_presenterCtrl.text.isEmpty) {
+        _presenterCtrl.text = presenterName;
+      }
+      if (_dateCtrl.text.isEmpty) {
+        _dateCtrl.text = presentationDate;
       }
     });
   }
@@ -100,6 +198,9 @@ class _UploadsScreenState extends State<UploadsScreen> {
         'source': 'user',
         'status': 'pending',
         'pptUrl': '',
+        'presenterName': _presenterCtrl.text.trim(),
+        'presentationDate': _dateCtrl.text.trim(),
+        'fileSizeBytes': _pptSize,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -136,6 +237,8 @@ class _UploadsScreenState extends State<UploadsScreen> {
         _pptName = null;
         _pptSize = null;
         _titleCtrl.clear();
+        _presenterCtrl.clear();
+        _dateCtrl.clear();
         _selectedSpecialty = 'General';
         _uploadProgress = null;
       });
@@ -245,16 +348,62 @@ class _UploadsScreenState extends State<UploadsScreen> {
                   'PowerPoint details',
                   style: theme.textTheme.titleMedium,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 20, color: theme.colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Topic, presenter, and date are extracted from the document metadata. You can edit them before submitting.',
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Form(
                   key: _formKey,
-                  child: TextFormField(
-                    controller: _titleCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Topic',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a topic' : null,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _titleCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Topic',
+                          border: OutlineInputBorder(),
+                          helperText: 'Extracted from document title',
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a topic' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _presenterCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Presenter Name',
+                          border: OutlineInputBorder(),
+                          helperText: 'Extracted from document author',
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter presenter name' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _dateCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Presentation Date',
+                          border: OutlineInputBorder(),
+                          helperText: 'Extracted from document created date',
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter presentation date' : null,
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -308,7 +457,11 @@ class _UploadsScreenState extends State<UploadsScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 1,
                               ),
-                              if (_pptSize != null) Text('${(_pptSize! / (1024 * 1024)).toStringAsFixed(1)} MB', style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                              const SizedBox(height: 4),
+                              if (_pptSize != null) Text(
+                                'Size: ${(_pptSize! / (1024 * 1024)).toStringAsFixed(2)} MB',
+                                style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                              ),
                             ],
                           ],
                         ),

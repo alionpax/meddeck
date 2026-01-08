@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'core/theme.dart';
 
@@ -156,40 +157,49 @@ class _ScaffoldShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = GoRouterState.of(context).uri.toString();
-    final idx = _indexForLocation(loc);
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: idx,
-        onTap: (i) {
-          switch (i) {
-            case 0:
-              context.go('/');
-              break;
-            case 1:
-              context.go('/offline');
-              break;
-            case 2:
-              context.go('/uploads');
-              break;
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_outlined),
-            label: 'Library',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.download_outlined),
-            label: 'Offline',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.upload_file_outlined),
-            label: 'Uploads',
-          ),
-        ],
-      ),
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        final isLoggedIn = snapshot.data != null;
+        final idx = _indexForLocation(loc);
+
+        return Scaffold(
+          body: child,
+          bottomNavigationBar: isLoggedIn
+              ? BottomNavigationBar(
+                  currentIndex: idx,
+                  onTap: (i) {
+                    switch (i) {
+                      case 0:
+                        context.go('/');
+                        break;
+                      case 1:
+                        context.go('/offline');
+                        break;
+                      case 2:
+                        context.go('/uploads');
+                        break;
+                    }
+                  },
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.grid_view_outlined),
+                      label: 'Library',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.download_outlined),
+                      label: 'Offline',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.upload_file_outlined),
+                      label: 'Uploads',
+                    ),
+                  ],
+                )
+              : null, // No navigation bar when not logged in
+        );
+      },
     );
   }
 }

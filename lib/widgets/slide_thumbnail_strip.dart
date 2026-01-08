@@ -7,8 +7,15 @@ class SlideThumbnailStrip extends StatefulWidget {
   final List<String> urls;
   final void Function(int index) onTap;
   final void Function(int index)? onIndexChanged;
+  final int? selectedIndex; // Add selected index parameter
 
-  const SlideThumbnailStrip({super.key, required this.urls, required this.onTap, this.onIndexChanged});
+  const SlideThumbnailStrip({
+    super.key,
+    required this.urls,
+    required this.onTap,
+    this.onIndexChanged,
+    this.selectedIndex,
+  });
 
   @override
   State<SlideThumbnailStrip> createState() => _SlideThumbnailStripState();
@@ -71,19 +78,25 @@ class _SlideThumbnailStripState extends State<SlideThumbnailStrip> {
               scale: _activeIndex == i ? 0.92 : 1.0,
               duration: const Duration(milliseconds: 150),
               curve: Curves.easeOutCubic,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(6),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(_activeIndex == i ? 0.2 : 0.1),
-                        blurRadius: _activeIndex == i ? 8 : 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  border: widget.selectedIndex == i
+                      ? Border.all(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 3,
+                        )
+                      : null,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(_activeIndex == i ? 0.2 : 0.1),
+                      blurRadius: _activeIndex == i ? 8 : 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
                     child: SafeNetworkImage(
